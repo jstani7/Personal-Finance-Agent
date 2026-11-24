@@ -8,9 +8,11 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
-  FileText,
   AlertCircle,
-  BarChart3,
+  Sparkles,
+  Bot,
+  User,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   BarChart,
@@ -51,7 +53,25 @@ const SAMPLE_QUESTIONS = [
   "How much did I spend on transport in the last 7 days?",
 ];
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280'];
+const CATEGORY_COLORS: Record<string, string> = {
+  Food: '#10b981',
+  Transport: '#f59e0b',
+  Entertainment: '#8b5cf6',
+  Utilities: '#3b82f6',
+  Shopping: '#ec4899',
+  Health: '#14b8a6',
+  Other: '#64748b',
+};
+
+const CATEGORY_BADGES: Record<string, string> = {
+  Food: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  Transport: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  Entertainment: 'bg-purple-50 text-purple-700 border-purple-200/60',
+  Utilities: 'bg-blue-50 text-blue-700 border-blue-200/60',
+  Shopping: 'bg-pink-50 text-pink-700 border-pink-200/60',
+  Health: 'bg-teal-50 text-teal-700 border-teal-200/60',
+  Other: 'bg-slate-50 text-slate-700 border-slate-200/60',
+};
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -62,11 +82,11 @@ export default function App() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial summary and transactions
   useEffect(() => {
     fetchSummary();
     fetchTransactions();
@@ -121,7 +141,10 @@ export default function App() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    await processFile(file);
+  };
 
+  const processFile = async (file: File) => {
     setUploadLoading(true);
     setStatusMessage(null);
     const formData = new FormData();
@@ -228,28 +251,55 @@ export default function App() {
     : [];
 
   return (
-    <div className="flex h-screen bg-[#f8f9fa] text-[#31333f] overflow-hidden">
+    <div className="flex h-screen bg-[#f8fafc] text-slate-900 overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className="w-80 bg-[#f0f2f6] border-r border-gray-200 p-5 flex flex-col justify-between overflow-y-auto">
+      <aside className="w-84 bg-white border-r border-slate-200/80 p-5 flex flex-col justify-between overflow-y-auto shadow-[1px_0_4px_rgba(0,0,0,0.02)]">
         <div className="space-y-6">
-          <h2 className="text-xl font-bold tracking-tight text-gray-800">Data</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+              Data
+            </h2>
+            <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+              SQLite
+            </span>
+          </div>
 
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Upload bank statement or transaction CSV/PDF
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-[11px] leading-relaxed text-slate-500 mb-2.5">
               CSV should include date, description, and amount (or debit/credit columns). PDF bank statements are also supported.
             </p>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-lg p-4 text-center cursor-pointer transition bg-white"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                if (e.dataTransfer.files?.[0]) {
+                  processFile(e.dataTransfer.files[0]);
+                }
+              }}
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${
+                isDragOver
+                  ? 'border-indigo-500 bg-indigo-50/50 scale-[0.99]'
+                  : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/60 bg-slate-50/30'
+              }`}
             >
-              <Upload className="mx-auto h-6 w-6 text-gray-400 mb-1" />
-              <span className="text-xs font-medium text-gray-600">
-                {uploadLoading ? 'Uploading...' : 'Browse files (CSV, PDF)'}
+              <div className="w-9 h-9 rounded-full bg-white shadow-xs border border-slate-200/80 flex items-center justify-center mx-auto mb-2 text-indigo-600">
+                <Upload className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-700 block">
+                {uploadLoading ? 'Processing file...' : 'Choose file or drag & drop'}
               </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">CSV or PDF (Max 10MB)</span>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -264,55 +314,89 @@ export default function App() {
           <button
             onClick={handleLoadSample}
             disabled={uploadLoading}
-            className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium text-sm py-2 px-3 rounded-md border border-gray-300 shadow-sm transition flex items-center justify-center gap-2"
+            className="w-full bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all flex items-center justify-center gap-2 group active:scale-[0.99]"
           >
-            {uploadLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {uploadLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 transition-transform group-hover:scale-110" />
+            )}
             Load sample transactions.csv
           </button>
 
           {/* Status Message */}
           {statusMessage && (
-            <div className="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-md border border-emerald-200 flex items-start gap-2">
-              <span>{statusMessage}</span>
+            <div className="bg-emerald-50/80 text-emerald-800 text-xs p-3 rounded-lg border border-emerald-200 flex items-start gap-2 shadow-2xs">
+              <span className="leading-tight">{statusMessage}</span>
             </div>
           )}
 
           {/* Summary KPIs & Chart */}
           {summary && summary.rows_imported > 0 && (
-            <div className="space-y-4 pt-2">
-              <div className="bg-white p-3 rounded-md border border-gray-200">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider block">
+            <div className="space-y-4 pt-1">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-4 rounded-xl text-white shadow-sm border border-slate-800">
+                <span className="text-[11px] font-medium text-slate-300 uppercase tracking-wider block mb-1">
                   Total spending
                 </span>
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-2xl font-bold tracking-tight text-white">
                   ${summary.total_spending.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  Across {summary.rows_imported} transactions
                 </span>
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">
                   Category totals
                 </h3>
-                <div className="space-y-1 text-sm mb-4">
+                <div className="space-y-1.5 text-xs mb-4">
                   {Object.entries(summary.category_breakdown).map(([cat, val]) => (
-                    <div key={cat} className="flex justify-between py-0.5 border-b border-gray-100">
-                      <span className="font-semibold text-gray-700">{cat}:</span>
-                      <span className="text-gray-900">${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div key={cat} className="flex justify-between items-center py-1 px-1.5 rounded hover:bg-slate-50 transition">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
+                        ></span>
+                        <span className="font-semibold text-slate-700">{cat}:</span>
+                      </div>
+                      <span className="font-mono font-medium text-slate-900">
+                        ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 {/* Recharts Bar Chart */}
                 {chartData.length > 0 && (
-                  <div className="h-44 bg-white p-2 rounded-md border border-gray-200">
+                  <div className="h-44 bg-slate-50/50 p-2.5 rounded-xl border border-slate-200/80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                        <XAxis dataKey="name" angle={-35} textAnchor="end" tick={{ fontSize: 10 }} interval={0} />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Spend']} />
-                        <Bar dataKey="value">
-                          {chartData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -24, bottom: 20 }}>
+                        <XAxis
+                          dataKey="name"
+                          angle={-35}
+                          textAnchor="end"
+                          tick={{ fontSize: 9, fill: '#64748b' }}
+                          interval={0}
+                        />
+                        <YAxis tick={{ fontSize: 9, fill: '#64748b' }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#0f172a',
+                            borderRadius: '8px',
+                            border: 'none',
+                            color: '#fff',
+                            fontSize: '11px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                          }}
+                          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Spend']}
+                        />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={CATEGORY_COLORS[entry.name] || '#64748b'}
+                            />
                           ))}
                         </Bar>
                       </BarChart>
@@ -325,61 +409,74 @@ export default function App() {
         </div>
 
         {/* Clear Data Button */}
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-slate-200">
           <button
             onClick={handleClearData}
-            className="w-full text-red-600 hover:bg-red-50 font-medium text-sm py-2 px-3 rounded-md border border-red-200 transition flex items-center justify-center gap-2"
+            className="w-full text-rose-600 hover:bg-rose-50 hover:border-rose-200 font-medium text-xs py-2 px-3 rounded-lg border border-transparent transition flex items-center justify-center gap-1.5"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
             Clear Data
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full bg-white">
+      <main className="flex-1 flex flex-col h-full bg-[#f8fafc]">
         {/* Top Header */}
-        <header className="p-6 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl">💰</span>
-            <h1 className="text-2xl font-bold text-gray-900">Personal Finance Agent</h1>
+        <header className="p-6 bg-white border-b border-slate-200/80 flex-shrink-0 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center text-xl shadow-xs">
+              💰
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">Personal Finance Agent</h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Upload a transaction CSV, then ask natural language questions about your spending. The agent categorizes transactions and answers using your SQLite-backed history.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mt-1">
-            Upload a transaction CSV, then ask natural language questions about your spending. The agent categorizes transactions and answers using your SQLite-backed history.
-          </p>
 
           {/* Transaction Preview Accordion */}
           {transactions.length > 0 && (
-            <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+            <div className="mt-4 border border-slate-200/80 rounded-xl overflow-hidden bg-white shadow-2xs">
               <button
                 onClick={() => setPreviewOpen(!previewOpen)}
-                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-gray-700 transition"
+                className="w-full flex items-center justify-between p-3 bg-slate-50/70 hover:bg-slate-100/70 text-xs font-semibold text-slate-700 transition"
               >
-                <span>Transaction preview ({transactions.length} rows)</span>
-                {previewOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <span className="flex items-center gap-2">
+                  <span>Transaction preview</span>
+                  <span className="bg-indigo-50 text-indigo-700 font-mono text-[10px] px-2 py-0.5 rounded-full border border-indigo-200/50">
+                    {transactions.length} rows
+                  </span>
+                </span>
+                {previewOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
               </button>
               {previewOpen && (
-                <div className="max-h-60 overflow-y-auto border-t border-gray-200 text-xs">
+                <div className="max-h-60 overflow-y-auto border-t border-slate-200 text-xs">
                   <table className="w-full text-left">
-                    <thead className="bg-gray-100 sticky top-0 border-b border-gray-200 text-gray-600 uppercase">
+                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
                       <tr>
-                        <th className="p-2">Date</th>
-                        <th className="p-2">Description</th>
-                        <th className="p-2">Category</th>
-                        <th className="p-2 text-right">Amount</th>
+                        <th className="p-2.5 pl-4">Date</th>
+                        <th className="p-2.5">Description</th>
+                        <th className="p-2.5">Category</th>
+                        <th className="p-2.5 pr-4 text-right">Amount</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                       {transactions.map((tx, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="p-2 whitespace-nowrap">{tx.date}</td>
-                          <td className="p-2">{tx.description}</td>
-                          <td className="p-2">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700">
+                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-2.5 pl-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">{tx.date}</td>
+                          <td className="p-2.5 font-medium text-slate-800">{tx.description}</td>
+                          <td className="p-2.5">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                CATEGORY_BADGES[tx.category] || 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                            >
                               {tx.category}
                             </span>
                           </td>
-                          <td className={`p-2 text-right font-mono font-medium ${tx.amount < 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
+                          <td className={`p-2.5 pr-4 text-right font-mono font-semibold ${tx.amount < 0 ? 'text-slate-900' : 'text-emerald-600'}`}>
                             ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
@@ -393,8 +490,8 @@ export default function App() {
 
           {/* Empty state info banner */}
           {transactions.length === 0 && (
-            <div className="mt-4 bg-blue-50 text-blue-900 border border-blue-200 p-3 rounded-lg text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <div className="mt-4 bg-indigo-50/70 text-indigo-900 border border-indigo-200/70 p-3 rounded-xl text-xs flex items-center gap-2.5 shadow-2xs">
+              <AlertCircle className="w-4 h-4 text-indigo-600 flex-shrink-0" />
               <span>No transactions loaded yet. Upload a CSV in the sidebar or click <strong>Load sample transactions.csv</strong> to try the demo.</span>
             </div>
           )}
@@ -405,65 +502,66 @@ export default function App() {
               <button
                 key={q}
                 onClick={() => handleSendMessage(q)}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 px-3 rounded-full border border-gray-200 transition"
+                className="text-xs bg-white hover:bg-indigo-50/50 hover:text-indigo-600 hover:border-indigo-300 text-slate-700 py-1.5 px-3 rounded-full border border-slate-200/90 transition-all duration-150 flex items-center gap-1 shadow-2xs group"
               >
-                {q}
+                <span>{q}</span>
+                <ArrowUpRight className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition-colors" />
               </button>
             ))}
           </div>
         </header>
 
         {/* Chat Messages Feed */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {messages.map((msg, index) => (
             <div
               key={index}
               className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                  AI
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                  <Bot className="w-4 h-4" />
                 </div>
               )}
               <div
-                className={`max-w-2xl rounded-xl p-4 text-sm ${
+                className={`max-w-2xl rounded-2xl p-4 text-xs leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-800 border border-gray-200'
+                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm rounded-tr-xs'
+                    : 'bg-white text-slate-800 border border-slate-200/80 shadow-xs rounded-tl-xs'
                 }`}
               >
-                <div className="prose prose-sm max-w-none">
+                <div className={`prose ${msg.role === 'user' ? 'text-white prose-invert' : 'text-slate-800'}`}>
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
 
                 {msg.role === 'assistant' && index === messages.length - 1 && (
-                  <div className="mt-3 pt-2 border-t border-gray-200 flex justify-end">
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex justify-end">
                     <button
                       onClick={handleDownloadHistory}
-                      className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1 transition"
+                      className="text-[11px] font-medium text-slate-400 hover:text-slate-700 flex items-center gap-1 transition"
                     >
-                      <Download className="w-3.5 h-3.5" />
+                      <Download className="w-3 h-3" />
                       Download chat history
                     </button>
                   </div>
                 )}
               </div>
               {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
-                  U
+                <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                  <User className="w-4 h-4" />
                 </div>
               )}
             </div>
           ))}
 
           {loading && (
-            <div className="flex gap-3 items-center text-gray-500 text-sm italic">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-                AI
+            <div className="flex gap-3 items-center text-slate-500 text-xs">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                <Bot className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2 bg-gray-100 p-3 rounded-xl border border-gray-200">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span>Analyzing your finances...</span>
+              <div className="flex items-center gap-2.5 bg-white p-3.5 rounded-2xl rounded-tl-xs border border-slate-200/80 shadow-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="font-medium text-slate-600">Analyzing your finances...</span>
               </div>
             </div>
           )}
@@ -472,28 +570,30 @@ export default function App() {
         </div>
 
         {/* Chat Input */}
-        <div className="p-4 border-t border-gray-200 bg-white">
+        <div className="p-4 border-t border-slate-200/80 bg-white shadow-[0_-1px_3px_rgba(0,0,0,0.02)]">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage(inputPrompt);
             }}
-            className="flex gap-2 max-w-4xl mx-auto"
+            className="flex gap-2 max-w-4xl mx-auto items-center"
           >
-            <input
-              type="text"
-              value={inputPrompt}
-              onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Ask about your finances..."
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                placeholder="Ask about your finances..."
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition shadow-2xs"
+              />
+            </div>
             <button
               type="submit"
               disabled={loading || !inputPrompt.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-1.5"
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-xs flex items-center gap-1.5 active:scale-[0.98]"
             >
-              <Send className="w-4 h-4" />
-              Send
+              <Send className="w-3.5 h-3.5" />
+              <span>Send</span>
             </button>
           </form>
         </div>
