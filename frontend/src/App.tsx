@@ -265,67 +265,45 @@ export default function App() {
       {/* View 1: Minimalist No-Scroll Landing Page */}
       {activeTab === 'landing' ? (
         <div
-          className="h-screen w-screen overflow-hidden flex flex-col justify-between relative bg-cover bg-right lg:bg-center bg-no-repeat"
+          className="h-screen w-screen overflow-hidden flex flex-col justify-between relative bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
         >
-          {/* Subtle gradient wash for razor-sharp text readability on left */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#fdfbf7]/95 via-[#fdfbf7]/75 to-transparent pointer-events-none sm:w-2/3" />
+          {/* Soft overlay ensuring high-contrast readability for centered content */}
+          <div className="absolute inset-0 bg-[#fdfbf7]/70 backdrop-blur-[1px] pointer-events-none" />
 
-          {/* Top minimal header */}
-          <header className="relative z-10 px-8 sm:px-14 pt-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
-                <Wallet className="w-5 h-5 text-amber-300" />
+          {/* Top minimal centered logo */}
+          <header className="relative z-10 px-8 pt-10 flex items-center justify-center">
+            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/60 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs">
+                <Wallet className="w-4 h-4 text-amber-300" />
               </div>
-              <span className="font-extrabold text-base tracking-tight text-slate-900">
+              <span className="font-extrabold text-sm tracking-tight text-slate-900">
                 Personal Finance Agent
               </span>
             </div>
-
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className="text-xs font-semibold text-slate-700 hover:text-slate-950 bg-white/80 hover:bg-white backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition flex items-center gap-1.5"
-            >
-              <span>Dashboard</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
           </header>
 
-          {/* Center Hero Content (strictly left-aligned on open canvas area) */}
-          <main className="relative z-10 px-8 sm:px-14 max-w-2xl py-6 flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/90 backdrop-blur-md border border-slate-200 text-slate-800 shadow-2xs mb-5 w-fit">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Autonomous Financial Intelligence</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12] mb-6">
+          {/* Center Hero Content (fully centered, no tech stack, single CTA) */}
+          <main className="relative z-10 px-6 max-w-3xl mx-auto flex flex-col items-center justify-center text-center my-auto">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.14] mb-6">
               Manage Finance Like Never Before with Agent
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-700 font-normal leading-relaxed mb-8 max-w-lg">
-              Upload bank statements, track spending trends, and ask natural language questions with private, local SQLite storage.
+            <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed mb-8 max-w-xl">
+              Upload your bank statements, track spending habits, and get clear answers to every financial question.
             </p>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2.5 group"
-              >
-                <span>Get Started</span>
-                <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            </div>
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-base px-8 py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2.5 group cursor-pointer"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+            </button>
           </main>
 
-          {/* Bottom subtle bar */}
-          <footer className="relative z-10 px-8 sm:px-14 pb-8 flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>100% Private & Local-First • Rust & Embedded SQLite</span>
-            {summary && summary.rows_imported > 0 && (
-              <span className="bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-200/80">
-                {summary.rows_imported} transactions loaded
-              </span>
-            )}
-          </footer>
+          {/* Empty bottom spacer to maintain perfect vertical centering */}
+          <div className="h-16 relative z-10 pointer-events-none" />
         </div>
       ) : (
         /* View 2: Copilot Dashboard */
