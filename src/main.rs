@@ -18,9 +18,9 @@ use rust_embed::RustEmbed;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::agent::ask_finance_agent;
-use crate::db::{clear_db, get_import_summary, load_transactions, open_db, DB_FILE};
+use crate::db::{clear_db, get_import_summary, get_spending_trends, load_transactions, open_db, DB_FILE};
 use crate::ingest::{ingest_csv_data, ingest_csv_file, parse_pdf_data};
-use crate::models::{ChatRequest, ChatResponse, ImportSummary, Transaction};
+use crate::models::{ChatRequest, ChatResponse, ImportSummary, SpendingTrendPoint, Transaction};
 
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
@@ -54,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/health", get(health_handler))
         .route("/api/transactions", get(transactions_handler))
         .route("/api/summary", get(summary_handler))
+        .route("/api/trends", get(trends_handler))
         .route("/api/sample", post(sample_handler))
         .route("/api/upload", post(upload_handler))
         .route("/api/clear", post(clear_handler))
@@ -98,6 +99,16 @@ async fn summary_handler(State(state): State<Arc<AppState>>) -> Result<Json<Impo
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(summary))
+}
+
+async fn trends_handler(State(state): State<Arc<AppState>>) -> Result<Json<Vec<SpendingTrendPoint>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let trends = get_spending_trends(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(trends))
 }
 
 async fn sample_handler(State(state): State<Arc<AppState>>) -> Result<Json<ImportSummary>, (StatusCode, String)> {

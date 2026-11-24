@@ -20,6 +20,13 @@ pub struct ImportSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpendingTrendPoint {
+    pub date: String,
+    pub daily: f64,
+    pub cumulative: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatRequest {
     pub question: String,
     pub chat_history: Option<Vec<(String, String)>>,

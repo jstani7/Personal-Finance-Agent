@@ -24,6 +24,8 @@ import {
 import {
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -95,6 +97,8 @@ export default function App() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [trends, setTrends] = useState<{ date: string; daily: number; cumulative: number }[]>([]);
+  const [chartView, setChartView] = useState<'category' | 'velocity'>('category');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,7 @@ export default function App() {
   useEffect(() => {
     fetchSummary();
     fetchTransactions();
+    fetchTrends();
   }, []);
 
   useEffect(() => {
@@ -132,6 +137,18 @@ export default function App() {
     }
   };
 
+  const fetchTrends = async () => {
+    try {
+      const res = await fetch('/api/trends');
+      if (res.ok) {
+        const data = await res.json();
+        setTrends(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleLoadSample = async () => {
     setUploadLoading(true);
     setStatusMessage(null);
@@ -141,6 +158,7 @@ export default function App() {
         const data: ImportSummary = await res.json();
         setSummary(data);
         fetchTransactions();
+        fetchTrends();
         setStatusMessage(`Loaded ${data.rows_imported} sample transactions.`);
         setActiveTab('dashboard');
       }
@@ -172,6 +190,7 @@ export default function App() {
         const data: ImportSummary = await res.json();
         setSummary(data);
         fetchTransactions();
+        fetchTrends();
         setStatusMessage(`Imported ${data.rows_imported} transactions (${data.date_range}).`);
         setActiveTab('dashboard');
       } else {
@@ -193,6 +212,7 @@ export default function App() {
         const data = await res.json();
         setSummary(data);
         setTransactions([]);
+        setTrends([]);
         setMessages([]);
         setStatusMessage(null);
       }
@@ -450,42 +470,109 @@ export default function App() {
                         ))}
                       </div>
 
-                      {/* Recharts Bar Chart */}
-                      {chartData.length > 0 && (
-                        <div className="h-44 bg-slate-50/50 p-2.5 rounded-xl border border-slate-200/80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 8, right: 8, left: -24, bottom: 20 }}>
-                              <XAxis
-                                dataKey="name"
-                                angle={-35}
-                                textAnchor="end"
-                                tick={{ fontSize: 9, fill: '#64748b' }}
-                                interval={0}
-                              />
-                              <YAxis tick={{ fontSize: 9, fill: '#64748b' }} />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: '#0f172a',
-                                  borderRadius: '8px',
-                                  border: 'none',
-                                  color: '#fff',
-                                  fontSize: '11px',
-                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                }}
-                                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Spend']}
-                              />
-                              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                {chartData.map((entry, index) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={CATEGORY_COLORS[entry.name] || '#64748b'}
-                                  />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
+                      {/* Recharts Bar or Velocity Area Chart */}
+                      <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-200/80">
+                        <div className="flex items-center justify-between mb-2 px-1">
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                            {chartView === 'category' ? 'Category Breakdown' : 'Spending Velocity'}
+                          </span>
+                          <div className="flex bg-slate-200/70 p-0.5 rounded-md text-[10px]">
+                            <button
+                              onClick={() => setChartView('category')}
+                              className={`px-1.5 py-0.5 rounded transition ${
+                                chartView === 'category' ? 'bg-white text-slate-900 font-semibold shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              Bar
+                            </button>
+                            <button
+                              onClick={() => setChartView('velocity')}
+                              className={`px-1.5 py-0.5 rounded transition ${
+                                chartView === 'velocity' ? 'bg-white text-slate-900 font-semibold shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              Trend
+                            </button>
+                          </div>
                         </div>
-                      )}
+
+                        {chartView === 'category' && chartData.length > 0 && (
+                          <div className="h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={chartData} margin={{ top: 8, right: 8, left: -24, bottom: 20 }}>
+                                <XAxis
+                                  dataKey="name"
+                                  angle={-35}
+                                  textAnchor="end"
+                                  tick={{ fontSize: 9, fill: '#64748b' }}
+                                  interval={0}
+                                />
+                                <YAxis tick={{ fontSize: 9, fill: '#64748b' }} />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: '#0f172a',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    color: '#fff',
+                                    fontSize: '11px',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                  }}
+                                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Spend']}
+                                />
+                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                  {chartData.map((entry, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={CATEGORY_COLORS[entry.name] || '#64748b'}
+                                    />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+
+                        {chartView === 'velocity' && trends.length > 0 && (
+                          <div className="h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={trends} margin={{ top: 8, right: 8, left: -24, bottom: 20 }}>
+                                <defs>
+                                  <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
+                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis
+                                  dataKey="date"
+                                  angle={-35}
+                                  textAnchor="end"
+                                  tick={{ fontSize: 9, fill: '#64748b' }}
+                                  interval={Math.ceil(trends.length / 5)}
+                                />
+                                <YAxis tick={{ fontSize: 9, fill: '#64748b' }} />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: '#0f172a',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    color: '#fff',
+                                    fontSize: '11px',
+                                  }}
+                                  formatter={(val: number) => [`$${val.toFixed(2)}`, 'Cumulative']}
+                                />
+                                <Area
+                                  type="monotone"
+                                  dataKey="cumulative"
+                                  stroke="#4f46e5"
+                                  strokeWidth={2}
+                                  fillOpacity={1}
+                                  fill="url(#velocityGrad)"
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

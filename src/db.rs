@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection};
 
-use crate::models::{ImportSummary, Transaction};
+use crate::models::{ImportSummary, SpendingTrendPoint, Transaction};
 
 pub const DB_FILE: &str = "finance.db";
 
@@ -185,4 +185,28 @@ pub fn query_transactions_sql(conn: &Connection, sql: &str) -> Result<String> {
     }
 
     Ok(lines.join("\n"))
+}
+
+pub fn get_spending_trends(conn: &Connection) -> Result<Vec<SpendingTrendPoint>> {
+    let mut stmt = conn.prepare(
+        "SELECT date, SUM(ABS(amount)) FROM transactions WHERE amount < 0 GROUP BY date ORDER BY date",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+    })?;
+
+    let mut points = Vec::new();
+    let mut running_total = 0.0;
+    for r in rows {
+        let (date, daily) = r?;
+        running_total += daily;
+        points.push(SpendingTrendPoint {
+            date,
+            daily,
+            cumulative: running_total,
+        });
+    }
+
+    Ok(points)
 }
