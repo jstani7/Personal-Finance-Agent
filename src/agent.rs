@@ -240,6 +240,42 @@ pub fn find_largest_discretionary_expenses(conn: &Connection, limit: usize) -> R
     Ok(lines.join("\n"))
 }
 
+pub fn check_budget_alerts(conn: &Connection) -> Result<String> {
+    let mut stmt = conn.prepare(
+        "SELECT category, SUM(ABS(amount)) FROM transactions WHERE amount < 0 GROUP BY category ORDER BY SUM(ABS(amount)) DESC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+    })?;
+
+    let mut cat_sums = Vec::new();
+    let mut total = 0.0;
+    for r in rows {
+        let (cat, sum) = r?;
+        total += sum;
+        cat_sums.push((cat, sum));
+    }
+
+    if cat_sums.is_empty() {
+        return Ok("No transactions loaded yet.".to_string());
+    }
+
+    let mut lines = vec!["Budget & Overspending Risk Analysis:".to_string(), "".to_string()];
+    for (cat, val) in &cat_sums {
+        let share = if total > 0.0 { 100.0 * val / total } else { 0.0 };
+        if share > 30.0 {
+            lines.push(format!("- **CRITICAL ALERT: {}**: ${:.2} ({:.1}% of entire budget). Exceeds recommended 30% single-category cap.", cat, val, share));
+        } else if share > 20.0 {
+            lines.push(format!("- **WATCH: {}**: ${:.2} ({:.1}% of total spend). Nearing high allocation threshold.", cat, val, share));
+        } else {
+            lines.push(format!("- **ON TRACK: {}**: ${:.2} ({:.1}% of total spend). Healthy allocation.", cat, val, share));
+        }
+    }
+
+    Ok(lines.join("\n"))
+}
+
 pub fn get_tools_definition() -> Value {
     json!([
         {
@@ -323,6 +359,17 @@ pub fn get_tools_definition() -> Value {
                     }
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_budget_alerts",
+                "description": "Analyze category spending distributions to identify budget overruns and categories exceeding safe allocation thresholds.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
         }
     ])
 }
@@ -365,6 +412,12 @@ pub fn execute_tool(db_path: &Path, name: &str, args_json: &str) -> String {
         "find_largest_discretionary_expenses" => {
             let limit = args["limit"].as_u64().unwrap_or(5) as usize;
             match find_largest_discretionary_expenses(&conn, limit) {
+                Ok(res) => res,
+                Err(e) => format!("Error: {}", e),
+            }
+        }
+        "check_budget_alerts" => {
+            match check_budget_alerts(&conn) {
                 Ok(res) => res,
                 Err(e) => format!("Error: {}", e),
             }

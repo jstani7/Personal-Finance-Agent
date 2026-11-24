@@ -454,20 +454,42 @@ export default function App() {
                         Category totals
                       </h3>
                       <div className="space-y-1.5 text-xs mb-4">
-                        {Object.entries(summary.category_breakdown).map(([cat, val]) => (
-                          <div key={cat} className="flex justify-between items-center py-1 px-1.5 rounded hover:bg-slate-50 transition">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
-                              ></span>
-                              <span className="font-semibold text-slate-700">{cat}:</span>
+                        {Object.entries(summary.category_breakdown).map(([cat, val]) => {
+                          const pct = summary.total_spending > 0 ? (val / summary.total_spending) * 100 : 0;
+                          return (
+                            <div key={cat} className="p-1.5 rounded-lg hover:bg-slate-50 transition">
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
+                                  ></span>
+                                  <span className="font-semibold text-slate-700">{cat}</span>
+                                  {pct > 25 && (
+                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200/80 px-1 rounded">
+                                      High
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-slate-400 font-mono">{pct.toFixed(0)}%</span>
+                                  <span className="font-mono font-medium text-slate-900">
+                                    ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${Math.min(pct, 100)}%`,
+                                    backgroundColor: CATEGORY_COLORS[cat] || '#64748b',
+                                  }}
+                                />
+                              </div>
                             </div>
-                            <span className="font-mono font-medium text-slate-900">
-                              ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Recharts Bar or Velocity Area Chart */}
