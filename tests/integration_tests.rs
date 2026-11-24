@@ -1,5 +1,5 @@
 use personal_finance_agent::db::{
-    detect_subscriptions, get_category_budgets, get_import_summary, init_db,
+    detect_anomalies, detect_subscriptions, get_category_budgets, get_import_summary, init_db,
     insert_single_transaction, load_transactions, set_category_budget,
 };
 use personal_finance_agent::models::CreateTransactionRequest;
@@ -164,4 +164,34 @@ fn test_date_range_filtering() {
     let feb_txs = load_transactions(&conn, Some("2026-02-01"), Some("2026-02-28")).unwrap();
     assert_eq!(feb_txs.len(), 1);
     assert_eq!(feb_txs[0].description, "February Grocery");
+}
+
+#[test]
+fn test_detect_anomalies() {
+    let conn = Connection::open_in_memory().unwrap();
+    init_db(&conn).unwrap();
+
+    // Insert 5 normal Food expenses around $15 - $25
+    for i in 1..=5 {
+        insert_single_transaction(&conn, &CreateTransactionRequest {
+            date: format!("2026-01-0{}", i),
+            description: format!("Lunch {}", i),
+            amount: -20.0,
+            category: Some("Food".to_string()),
+        }).unwrap();
+    }
+
+    // Insert 1 huge outlier Food expense ($180)
+    insert_single_transaction(&conn, &CreateTransactionRequest {
+        date: "2026-01-10".to_string(),
+        description: "Fancy Tasting Dinner".to_string(),
+        amount: -180.0,
+        category: Some("Food".to_string()),
+    }).unwrap();
+
+    let anomalies = detect_anomalies(&conn, None, None).unwrap();
+    assert!(!anomalies.is_empty());
+    assert_eq!(anomalies[0].description, "Fancy Tasting Dinner");
+    assert_eq!(anomalies[0].amount, 180.0);
+    assert!(anomalies[0].z_score > 1.5);
 }

@@ -5,7 +5,7 @@ use rusqlite::{params, Connection};
 
 use crate::categories::categorize_transaction;
 use crate::models::{
-    CategoryBudget, CreateTransactionRequest, ImportSummary, SpendingTrendPoint,
+    CategoryBudget, CreateTransactionRequest, ImportSummary, SpendingAnomaly, SpendingTrendPoint,
     SubscriptionItem, Transaction,
 };
 
@@ -399,4 +399,112 @@ pub fn get_category_budgets(
     budgets.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(budgets)
+}
+
+pub fn detect_anomalies(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> Result<Vec<SpendingAnomaly>> {
+    let s = start_date.unwrap_or("");
+    let e = end_date.unwrap_or("");
+
+    let mut stmt = conn.prepare(
+        "SELECT id, date, description, category, ABS(amount) as amt
+         FROM transactions
+         WHERE amount < 0 AND (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)
+         ORDER BY date DESC",
+    )?;
+
+    struct TxRow {
+        id: i64,
+        date: String,
+        description: String,
+        category: String,
+        amt: f64,
+    }
+
+    let rows = stmt.query_map(params![s, e], |r| {
+        Ok(TxRow {
+            id: r.get(0)?,
+            date: r.get(1)?,
+            description: r.get(2)?,
+            category: r.get(3)?,
+            amt: r.get(4)?,
+        })
+    })?;
+
+    let mut txs = Vec::new();
+    for r in rows {
+        txs.push(r?);
+    }
+
+    let mut cat_amounts: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+    for t in &txs {
+        cat_amounts.entry(t.category.clone()).or_default().push(t.amt);
+    }
+
+    struct CatStats {
+        mean: f64,
+        std_dev: f64,
+    }
+
+    let mut cat_stats: BTreeMap<String, CatStats> = BTreeMap::new();
+    for (cat, vals) in cat_amounts {
+        let n = vals.len() as f64;
+        if n == 0.0 {
+            continue;
+        }
+        let mean = vals.iter().sum::<f64>() / n;
+        let variance = if n > 1.0 {
+            vals.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0)
+        } else {
+            0.0
+        };
+        let std_dev = variance.sqrt();
+        cat_stats.insert(cat, CatStats { mean, std_dev });
+    }
+
+    let mut anomalies = Vec::new();
+    for t in txs {
+        if let Some(stats) = cat_stats.get(&t.category) {
+            let mean = stats.mean;
+            let std_dev = stats.std_dev;
+
+            let z_score = if std_dev > 1.0 {
+                (t.amt - mean) / std_dev
+            } else {
+                0.0
+            };
+
+            let is_z_outlier = z_score >= 2.0 && (t.amt - mean) >= 35.0;
+            let is_ratio_spike = mean > 0.0 && t.amt >= (2.2 * mean) && (t.amt - mean) >= 40.0;
+            let is_absolute_surge = t.amt >= 250.0 && (t.amt - mean) >= 40.0;
+
+            if is_z_outlier || is_ratio_spike || is_absolute_surge {
+                let reason = if is_ratio_spike {
+                    format!("{:.1}x higher than category average (${:.2})", t.amt / mean, mean)
+                } else if is_z_outlier {
+                    format!("Statistical outlier (Z-Score +{:.1})", z_score)
+                } else {
+                    format!("Unusual high expenditure ($+{:.2} above mean)", t.amt - mean)
+                };
+
+                anomalies.push(SpendingAnomaly {
+                    id: t.id,
+                    date: t.date,
+                    description: t.description,
+                    amount: t.amt,
+                    category: t.category,
+                    category_avg: mean,
+                    z_score,
+                    reason,
+                });
+            }
+        }
+    }
+
+    anomalies.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap_or(std::cmp::Ordering::Equal));
+
+    Ok(anomalies)
 }

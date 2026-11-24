@@ -45,6 +45,18 @@ pub struct SubscriptionItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpendingAnomaly {
+    pub id: i64,
+    pub date: String,
+    pub description: String,
+    pub amount: f64,
+    pub category: String,
+    pub category_avg: f64,
+    pub z_score: f64,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryBudget {
     pub category: String,
     pub monthly_limit: f64,

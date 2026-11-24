@@ -279,6 +279,27 @@ pub fn detect_recurring_subscriptions(conn: &Connection) -> Result<String> {
     Ok(lines.join("\n"))
 }
 
+pub fn detect_spending_anomalies(conn: &Connection) -> Result<String> {
+    let anomalies = crate::db::detect_anomalies(conn, None, None)?;
+    if anomalies.is_empty() {
+        return Ok("No abnormal spending spikes or statistical outliers detected.".to_string());
+    }
+
+    let mut lines = vec![
+        format!("Detected {} abnormal spending spike(s) or outlier(s):", anomalies.len()),
+        "".to_string(),
+    ];
+
+    for a in anomalies.iter().take(8) {
+        lines.push(format!(
+            "- {} | {} | ${:.2} ({}) -> {}",
+            a.date, a.description, a.amount, a.category, a.reason
+        ));
+    }
+
+    Ok(lines.join("\n"))
+}
+
 pub fn get_tools_definition() -> Value {
     json!([
         {
@@ -384,6 +405,17 @@ pub fn get_tools_definition() -> Value {
                     "properties": {}
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "detect_spending_anomalies",
+                "description": "Identify statistical outliers, unexpected spending spikes, and abnormal transactions across all expense categories.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
         }
     ])
 }
@@ -438,6 +470,12 @@ pub fn execute_tool(db_path: &Path, name: &str, args_json: &str) -> String {
         }
         "detect_recurring_subscriptions" => {
             match detect_recurring_subscriptions(&conn) {
+                Ok(res) => res,
+                Err(e) => format!("Error: {}", e),
+            }
+        }
+        "detect_spending_anomalies" => {
+            match detect_spending_anomalies(&conn) {
                 Ok(res) => res,
                 Err(e) => format!("Error: {}", e),
             }

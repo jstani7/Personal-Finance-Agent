@@ -15,14 +15,15 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::agent::ask_finance_agent;
 use crate::db::{
-    clear_db, detect_subscriptions, get_category_budgets, get_import_summary,
+    clear_db, detect_anomalies, detect_subscriptions, get_category_budgets, get_import_summary,
     get_spending_trends, insert_single_transaction, load_transactions, open_db,
     set_category_budget, DB_FILE,
 };
 use crate::ingest::{ingest_csv_data, ingest_csv_file, parse_pdf_data};
 use crate::models::{
     CategoryBudget, ChatRequest, ChatResponse, CreateTransactionRequest, DateFilterQuery,
-    ImportSummary, SetBudgetRequest, SpendingTrendPoint, SubscriptionItem, Transaction,
+    ImportSummary, SetBudgetRequest, SpendingAnomaly, SpendingTrendPoint, SubscriptionItem,
+    Transaction,
 };
 
 #[derive(RustEmbed)]
@@ -60,6 +61,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/summary", get(summary_handler))
         .route("/api/trends", get(trends_handler))
         .route("/api/budgets", get(budgets_handler).post(set_budget_handler))
+        .route("/api/anomalies", get(anomalies_handler))
         .route("/api/sample", post(sample_handler))
         .route("/api/upload", post(upload_handler))
         .route("/api/clear", post(clear_handler))
@@ -234,11 +236,14 @@ async fn clear_handler(State(state): State<Arc<AppState>>) -> Result<Json<Import
     Ok(Json(summary))
 }
 
-async fn export_csv_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+async fn export_csv_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Response, (StatusCode, String)> {
     let conn = open_db(&state.db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let txs = load_transactions(&conn, None, None)
+    let txs = load_transactions(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let mut csv_out = String::from("date,description,amount,category,is_income\n");
@@ -255,13 +260,16 @@ async fn export_csv_handler(State(state): State<Arc<AppState>>) -> Result<Respon
     ).into_response())
 }
 
-async fn export_json_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+async fn export_json_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Response, (StatusCode, String)> {
     let conn = open_db(&state.db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let txs = load_transactions(&conn, None, None)
+    let txs = load_transactions(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let summary = get_import_summary(&conn, None, None)
+    let summary = get_import_summary(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let payload = serde_json::json!({
@@ -276,6 +284,19 @@ async fn export_json_handler(State(state): State<Arc<AppState>>) -> Result<Respo
         ],
         payload.to_string(),
     ).into_response())
+}
+
+async fn anomalies_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Json<Vec<SpendingAnomaly>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let anomalies = detect_anomalies(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(anomalies))
 }
 
 async fn chat_handler(

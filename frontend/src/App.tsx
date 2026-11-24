@@ -26,6 +26,9 @@ import {
   LayoutDashboard,
   Sliders,
   Filter,
+  AlertOctagon,
+  Printer,
+  FileText,
 } from 'lucide-react';
 import {
   BarChart,
@@ -63,6 +66,17 @@ interface CategoryBudget {
   current_spent: f64;
   percentage: f64;
   status: 'ok' | 'warning' | 'exceeded';
+}
+
+interface SpendingAnomaly {
+  id: number;
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  category_avg: number;
+  z_score: number;
+  reason: string;
 }
 
 type f64 = number;
@@ -163,6 +177,8 @@ export default function App() {
   const [trends, setTrends] = useState<{ date: string; daily: number; cumulative: number }[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
+  const [anomalies, setAnomalies] = useState<SpendingAnomaly[]>([]);
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
 
   // Date Range Filter state
   const [dateFilter, setDateFilter] = useState<string>('all');
@@ -248,17 +264,19 @@ export default function App() {
   const fetchFilteredData = async (filterVal: string) => {
     const query = getDateQuery(filterVal);
     try {
-      const [sumRes, txRes, trRes, budRes] = await Promise.all([
+      const [sumRes, txRes, trRes, budRes, anomRes] = await Promise.all([
         fetch(`/api/summary${query}`),
         fetch(`/api/transactions${query}`),
         fetch(`/api/trends${query}`),
         fetch(`/api/budgets${query}`),
+        fetch(`/api/anomalies${query}`),
       ]);
 
       if (sumRes.ok) setSummary(await sumRes.json());
       if (txRes.ok) setTransactions(await txRes.json());
       if (trRes.ok) setTrends(await trRes.json());
       if (budRes.ok) setBudgets(await budRes.json());
+      if (anomRes.ok) setAnomalies(await anomRes.json());
     } catch (err) {
       console.error(err);
     }
@@ -412,6 +430,7 @@ export default function App() {
         setTrends([]);
         setSubscriptions([]);
         setBudgets([]);
+        setAnomalies([]);
         setMessages([]);
         setStatusMessage(null);
       }
@@ -777,20 +796,30 @@ export default function App() {
                 {summary && summary.rows_imported > 0 && (
                   <div className="flex gap-2">
                     <a
-                      href="/api/export/csv"
+                      href={`/api/export/csv${getDateQuery(dateFilter)}`}
                       download="transactions_export.csv"
-                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 shadow-subtle"
+                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1 shadow-subtle"
+                      title="Download CSV for selected period"
                     >
                       <Download className="w-3.5 h-3.5 text-slate-400" />
                       <span>CSV</span>
                     </a>
+                    <button
+                      onClick={() => setIsStatementOpen(true)}
+                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1 shadow-subtle cursor-pointer"
+                      title="Print or Save as PDF"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-400" />
+                      <span>PDF</span>
+                    </button>
                     <a
-                      href="/api/export/json"
+                      href={`/api/export/json${getDateQuery(dateFilter)}`}
                       download="financial_audit.json"
-                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 shadow-subtle"
+                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1 shadow-subtle"
+                      title="Download JSON audit"
                     >
                       <Download className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Audit JSON</span>
+                      <span>JSON</span>
                     </a>
                   </div>
                 )}
@@ -861,6 +890,35 @@ export default function App() {
                             className="bg-rose-900/60 hover:bg-rose-850 text-rose-200 border border-rose-700 text-xs font-medium py-1.5 px-3 rounded-lg transition cursor-pointer"
                           >
                             Adjust Targets
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Spending Anomalies Alert Banner */}
+                      {anomalies.length > 0 && (
+                        <div className="p-4 bg-amber-950/40 border border-amber-800/80 rounded-2xl flex items-center justify-between gap-3 shadow-card animate-in fade-in duration-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-900/60 border border-amber-700/60 flex items-center justify-center text-amber-400 flex-shrink-0">
+                              <AlertOctagon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                                Unusual Spending Spike Alert ({anomalies.length} Detected)
+                              </h4>
+                              <p className="text-xs text-amber-200/90 mt-0.5">
+                                {anomalies.slice(0, 2).map((a) => `${a.description} ($${a.amount.toFixed(2)})`).join(', ')}
+                                {anomalies.length > 2 && ` and ${anomalies.length - 2} other unusual transactions`}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setDashboardView('journal');
+                              setSearchQuery(anomalies[0].description);
+                            }}
+                            className="bg-amber-900/60 hover:bg-amber-850 text-amber-200 border border-amber-700 text-xs font-medium py-1.5 px-3 rounded-lg transition cursor-pointer flex-shrink-0"
+                          >
+                            Inspect Journal
                           </button>
                         </div>
                       )}
@@ -1827,6 +1885,134 @@ export default function App() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Financial Statement / PDF Export */}
+          {isStatementOpen && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div
+                className="bg-[#11192e] rounded-2xl border border-slate-700 shadow-2xl max-w-2xl w-full overflow-hidden text-white animate-in fade-in duration-150 my-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between no-print">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-950/70 border border-indigo-800/60 text-indigo-400 flex items-center justify-center shadow-subtle">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Financial Statement</h3>
+                      <p className="text-xs text-slate-400">Print or export document as PDF.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2 px-3 rounded-lg shadow-subtle transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print / Save as PDF</span>
+                    </button>
+                    <button
+                      onClick={() => setIsStatementOpen(false)}
+                      className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Printable Statement Container */}
+                <div id="printable-statement" className="p-6 md:p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+                  <div className="border-b border-slate-700/80 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold tracking-tight text-white">Personal Finance Statement</h2>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Period: <span className="font-semibold text-slate-200">{dateFilter === 'all' ? 'All Time' : dateFilter}</span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-slate-400 block">Generated On</span>
+                        <span className="text-xs font-mono font-medium text-slate-300">
+                          {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Strip */}
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-slate-900/60 rounded-xl border border-slate-800">
+                    <div>
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider">Total Outflow</span>
+                      <span className="text-lg font-bold font-mono text-rose-400">
+                        ${summary ? summary.total_spending.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider">Transactions</span>
+                      <span className="text-lg font-bold font-mono text-white">
+                        {transactions.length}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider">Avg Expense</span>
+                      <span className="text-lg font-bold font-mono text-indigo-300">
+                        ${transactions.length > 0 && summary ? (summary.total_spending / Math.max(1, transactions.filter(t => t.amount < 0).length)).toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Category Breakdown */}
+                  {summary && Object.keys(summary.category_breakdown).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Category Spending</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {Object.entries(summary.category_breakdown).map(([cat, amt]) => (
+                          <div key={cat} className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800 flex justify-between items-center text-xs">
+                            <span className="text-slate-300">{cat}</span>
+                            <span className="font-mono font-bold text-white">${amt.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Itemized Transactions Table */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Itemized Records</h4>
+                    <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                          <tr>
+                            <th className="py-2 px-3 font-semibold">Date</th>
+                            <th className="py-2 px-3 font-semibold">Description</th>
+                            <th className="py-2 px-3 font-semibold">Category</th>
+                            <th className="py-2 px-3 font-semibold text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 font-mono">
+                          {transactions.slice(0, 50).map((t, idx) => (
+                            <tr key={idx} className="hover:bg-slate-900/30">
+                              <td className="py-2 px-3 text-slate-400 whitespace-nowrap">{t.date}</td>
+                              <td className="py-2 px-3 text-slate-200 font-sans">{t.description}</td>
+                              <td className="py-2 px-3 text-slate-300 font-sans">{t.category}</td>
+                              <td className={`py-2 px-3 text-right font-bold ${t.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                {t.amount < 0 ? `-$${Math.abs(t.amount).toFixed(2)}` : `+$${t.amount.toFixed(2)}`}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {transactions.length > 50 && (
+                      <p className="text-xs text-slate-500 mt-2 text-center no-print">
+                        Showing first 50 transactions. Use CSV export for full records.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
