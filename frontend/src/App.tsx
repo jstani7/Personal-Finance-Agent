@@ -14,13 +14,9 @@ import {
   User,
   ArrowUpRight,
   Wallet,
-  ShieldCheck,
-  Cpu,
-  Database,
-  BarChart3,
-  Layers,
   ArrowRight,
-  CheckCircle2,
+  ArrowLeft,
+  Database,
 } from 'lucide-react';
 import {
   BarChart,
@@ -31,6 +27,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+
+import heroImage from './assets/hero.jpeg';
 
 interface Transaction {
   id?: number;
@@ -82,7 +80,7 @@ const CATEGORY_BADGES: Record<string, string> = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'dashboard'>('overview');
+  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard'>('landing');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputPrompt, setInputPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -263,204 +261,105 @@ export default function App() {
     : [];
 
   return (
-    <div className="flex flex-col h-screen bg-[#f8fafc] text-slate-900 overflow-hidden font-sans">
-      {/* Top Universal Navbar */}
-      <nav className="h-14 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-            <Wallet className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-sm tracking-tight text-slate-900">Personal Finance Agent</span>
-          <span className="hidden sm:inline-block text-[10px] font-mono font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full">
-            v0.1 Rust
-          </span>
-        </div>
+    <div className="h-screen w-screen overflow-hidden bg-[#fdfbf7] text-slate-900 font-sans">
+      {/* View 1: Minimalist No-Scroll Landing Page */}
+      {activeTab === 'landing' ? (
+        <div
+          className="h-screen w-screen overflow-hidden flex flex-col justify-between relative bg-cover bg-right lg:bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        >
+          {/* Subtle gradient wash for razor-sharp text readability on left */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#fdfbf7]/95 via-[#fdfbf7]/75 to-transparent pointer-events-none sm:w-2/3" />
 
-        {/* Tab Switcher */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-medium shadow-2xs">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all ${
-              activeTab === 'overview'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Landing Page
-          </button>
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'dashboard'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>App Dashboard</span>
-            {transactions.length > 0 && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            )}
-          </button>
-        </div>
+          {/* Top minimal header */}
+          <header className="relative z-10 px-8 sm:px-14 pt-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
+                <Wallet className="w-5 h-5 text-amber-300" />
+              </div>
+              <span className="font-extrabold text-base tracking-tight text-slate-900">
+                Personal Finance Agent
+              </span>
+            </div>
 
-        <div className="flex items-center gap-2">
-          {activeTab === 'overview' && (
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1.5 px-3 rounded-lg transition shadow-2xs flex items-center gap-1"
+              className="text-xs font-semibold text-slate-700 hover:text-slate-950 bg-white/80 hover:bg-white backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition flex items-center gap-1.5"
             >
-              <span>Launch Dashboard</span>
+              <span>Dashboard</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
-          )}
+          </header>
+
+          {/* Center Hero Content (strictly left-aligned on open canvas area) */}
+          <main className="relative z-10 px-8 sm:px-14 max-w-2xl py-6 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/90 backdrop-blur-md border border-slate-200 text-slate-800 shadow-2xs mb-5 w-fit">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Autonomous Financial Intelligence</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12] mb-6">
+              Manage Finance Like Never Before with Agent
+            </h1>
+
+            <p className="text-base sm:text-lg text-slate-700 font-normal leading-relaxed mb-8 max-w-lg">
+              Upload bank statements, track spending trends, and ask natural language questions with private, local SQLite storage.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2.5 group"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </div>
+          </main>
+
+          {/* Bottom subtle bar */}
+          <footer className="relative z-10 px-8 sm:px-14 pb-8 flex items-center justify-between text-xs text-slate-500 font-medium">
+            <span>100% Private & Local-First • Rust & Embedded SQLite</span>
+            {summary && summary.rows_imported > 0 && (
+              <span className="bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-200/80">
+                {summary.rows_imported} transactions loaded
+              </span>
+            )}
+          </footer>
         </div>
-      </nav>
-
-      {/* Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Landing Page View */}
-        {activeTab === 'overview' ? (
-          <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white via-slate-50/50 to-slate-100/50">
-            {/* Hero Section */}
-            <div className="max-w-4xl mx-auto px-6 pt-16 pb-12 text-center">
-              <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200/70 px-3 py-1 rounded-full text-indigo-700 text-xs font-semibold mb-6 shadow-2xs">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Local-First Financial Intelligence</span>
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 mb-5 leading-tight">
-                Understand Every Dollar with an <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                  Autonomous AI Copilot
-                </span>
-              </h1>
-
-              <p className="text-base text-slate-600 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Ingest bank statements, automatically classify spending into intelligent buckets, and query your transaction history using natural language powered by embedded SQLite and native Rust.
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onClick={handleLoadSample}
-                  disabled={uploadLoading}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 active:scale-[0.99]"
-                >
-                  {uploadLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  <span>Explore Demo Transactions</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveTab('dashboard');
-                    setTimeout(() => fileInputRef.current?.click(), 100);
-                  }}
-                  className="bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm px-5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs transition flex items-center gap-2 active:scale-[0.99]"
-                >
-                  <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Upload Statement</span>
-                </button>
-              </div>
-
-              {/* Status Pill if loaded */}
-              {summary && summary.rows_imported > 0 && (
-                <div className="mt-4 inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-xs px-3 py-1 rounded-full">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{summary.rows_imported} transactions currently loaded in local SQLite</span>
+      ) : (
+        /* View 2: Copilot Dashboard */
+        <div className="flex flex-col h-screen overflow-hidden">
+          {/* Dashboard Header Bar */}
+          <nav className="h-13 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setActiveTab('landing')}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition py-1 px-2.5 rounded-lg hover:bg-slate-100"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Landing Page</span>
+              </button>
+              <div className="h-4 w-[1px] bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-slate-900 text-white flex items-center justify-center shadow-xs">
+                  <Wallet className="w-3.5 h-3.5 text-amber-300" />
                 </div>
-              )}
-            </div>
-
-            {/* Core Feature Pillars */}
-            <div className="max-w-5xl mx-auto px-6 py-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base mb-2">100% Local & Private</h3>
-                  <p className="text-xs leading-relaxed text-slate-600">
-                    Your financial transactions reside exclusively inside your local SQLite database (<code className="text-[11px] bg-slate-100 px-1 py-0.5 rounded">finance.db</code>). Zero bank credentials or transaction rows are stored on remote servers.
-                  </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600 mb-4">
-                    <Cpu className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base mb-2">Native Rust Engine</h3>
-                  <p className="text-xs leading-relaxed text-slate-600">
-                    Built entirely on Axum and Rusqlite. Sub-second startup times, instant SQL executions, and single compiled binary packaging with zero runtime Python dependencies.
-                  </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
-                    <Bot className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base mb-2">Safe Tool-Calling AI</h3>
-                  <p className="text-xs leading-relaxed text-slate-600">
-                    An autonomous agent loop armed with strictly read-only SQL validation, weekly budget calculators, and discretionary spending analyzers that cite exact numbers.
-                  </p>
-                </div>
+                <span className="font-bold text-xs tracking-tight text-slate-900">Personal Finance Agent</span>
               </div>
             </div>
 
-            {/* Architecture Highlights Section */}
-            <div className="max-w-5xl mx-auto px-6 py-12">
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-xs">
-                <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider mb-2">
-                  <Layers className="w-4 h-4" />
-                  <span>Pipeline Architecture</span>
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 mb-6">How Your Data Flows</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-xs font-mono font-bold text-slate-400 mb-1">01 / INGEST</div>
-                    <div className="font-semibold text-slate-900 text-sm mb-1">CSV & PDF Parser</div>
-                    <p className="text-xs text-slate-500">Normalizes date, memo, debit, and credit columns automatically.</p>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-xs font-mono font-bold text-slate-400 mb-1">02 / CLASSIFY</div>
-                    <div className="font-semibold text-slate-900 text-sm mb-1">Keyword Matcher</div>
-                    <p className="text-xs text-slate-500">Categorizes records across 7 standard financial buckets.</p>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-xs font-mono font-bold text-slate-400 mb-1">03 / PERSIST</div>
-                    <div className="font-semibold text-slate-900 text-sm mb-1">Embedded SQLite</div>
-                    <p className="text-xs text-slate-500">High-speed local storage optimized for instant analytical querying.</p>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-xs font-mono font-bold text-slate-400 mb-1">04 / REASON</div>
-                    <div className="font-semibold text-slate-900 text-sm mb-1">Tool-Calling Agent</div>
-                    <p className="text-xs text-slate-500">Answers queries, runs read-only SQL, and suggests budget plans.</p>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                  <div className="text-xs text-slate-500">
-                    Compatible with Orq.ai, OpenAI GPT-4o, Groq, and local Ollama models.
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('dashboard')}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition"
-                  >
-                    <span>Open Dashboard</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('landing')}
+                className="text-xs text-slate-500 hover:text-slate-800 transition"
+              >
+                Overview
+              </button>
             </div>
-          </div>
-        ) : (
-          /* Dashboard Workspace View */
+          </nav>
+
+          {/* Main Dashboard Layout */}
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}
             <aside className="w-84 bg-white border-r border-slate-200/80 p-5 flex flex-col justify-between overflow-y-auto shadow-[1px_0_4px_rgba(0,0,0,0.02)] flex-shrink-0">
@@ -635,8 +534,8 @@ export default function App() {
               {/* Top Header */}
               <header className="p-6 bg-white border-b border-slate-200/80 flex-shrink-0 shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-xs">
-                    <Wallet className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
+                    <Wallet className="w-5 h-5 text-amber-300" />
                   </div>
                   <div>
                     <h1 className="text-xl font-bold tracking-tight text-slate-900">Personal Finance Agent</h1>
@@ -729,14 +628,14 @@ export default function App() {
                     className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {msg.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                        <Bot className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                        <Bot className="w-4 h-4 text-amber-300" />
                       </div>
                     )}
                     <div
                       className={`max-w-2xl rounded-2xl p-4 text-xs leading-relaxed ${
                         msg.role === 'user'
-                          ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm rounded-tr-xs'
+                          ? 'bg-slate-900 text-white shadow-sm rounded-tr-xs'
                           : 'bg-white text-slate-800 border border-slate-200/80 shadow-xs rounded-tl-xs'
                       }`}
                     >
@@ -757,7 +656,7 @@ export default function App() {
                       )}
                     </div>
                     {msg.role === 'user' && (
-                      <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                      <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-800 flex items-center justify-center flex-shrink-0 shadow-xs">
                         <User className="w-4 h-4" />
                       </div>
                     )}
@@ -766,8 +665,8 @@ export default function App() {
 
                 {loading && (
                   <div className="flex gap-3 items-center text-slate-500 text-xs">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                      <Bot className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                      <Bot className="w-4 h-4 text-amber-300" />
                     </div>
                     <div className="flex items-center gap-2.5 bg-white p-3.5 rounded-2xl rounded-tl-xs border border-slate-200/80 shadow-xs">
                       <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
@@ -800,7 +699,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={loading || !inputPrompt.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-xs flex items-center gap-1.5 active:scale-[0.98]"
+                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-xs flex items-center gap-1.5 active:scale-[0.98]"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Send</span>
@@ -809,8 +708,8 @@ export default function App() {
               </div>
             </main>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
