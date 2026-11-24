@@ -1,8 +1,4 @@
-mod agent;
-mod categories;
-mod db;
-mod ingest;
-mod models;
+use personal_finance_agent::{agent, db, ingest, models};
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -18,9 +14,15 @@ use rust_embed::RustEmbed;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::agent::ask_finance_agent;
-use crate::db::{clear_db, get_import_summary, get_spending_trends, load_transactions, open_db, DB_FILE};
+use crate::db::{
+    clear_db, detect_subscriptions, get_import_summary, get_spending_trends,
+    insert_single_transaction, load_transactions, open_db, DB_FILE,
+};
 use crate::ingest::{ingest_csv_data, ingest_csv_file, parse_pdf_data};
-use crate::models::{ChatRequest, ChatResponse, ImportSummary, SpendingTrendPoint, Transaction};
+use crate::models::{
+    ChatRequest, ChatResponse, CreateTransactionRequest, ImportSummary,
+    SpendingTrendPoint, SubscriptionItem, Transaction,
+};
 
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
@@ -52,7 +54,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/api/health", get(health_handler))
-        .route("/api/transactions", get(transactions_handler))
+        .route("/api/transactions", get(transactions_handler).post(create_transaction_handler))
+        .route("/api/subscriptions", get(subscriptions_handler))
         .route("/api/summary", get(summary_handler))
         .route("/api/trends", get(trends_handler))
         .route("/api/sample", post(sample_handler))
@@ -91,6 +94,31 @@ async fn transactions_handler(State(state): State<Arc<AppState>>) -> Result<Json
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(txs))
+}
+
+async fn create_transaction_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateTransactionRequest>,
+) -> Result<Json<Transaction>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let tx = insert_single_transaction(&conn, &payload)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(tx))
+}
+
+async fn subscriptions_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<SubscriptionItem>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let subs = detect_subscriptions(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(subs))
 }
 
 async fn summary_handler(State(state): State<Arc<AppState>>) -> Result<Json<ImportSummary>, (StatusCode, String)> {

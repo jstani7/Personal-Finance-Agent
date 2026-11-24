@@ -3,7 +3,8 @@ use std::path::Path;
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection};
 
-use crate::models::{ImportSummary, SpendingTrendPoint, Transaction};
+use crate::categories::categorize_transaction;
+use crate::models::{CreateTransactionRequest, ImportSummary, SpendingTrendPoint, SubscriptionItem, Transaction};
 
 pub const DB_FILE: &str = "finance.db";
 
@@ -209,4 +210,71 @@ pub fn get_spending_trends(conn: &Connection) -> Result<Vec<SpendingTrendPoint>>
     }
 
     Ok(points)
+}
+
+pub fn insert_single_transaction(conn: &Connection, tx: &CreateTransactionRequest) -> Result<Transaction> {
+    let clean_amount = if tx.amount > 0.0
+        && !tx.description.to_lowercase().contains("salary")
+        && !tx.description.to_lowercase().contains("deposit")
+        && !tx.description.to_lowercase().contains("income")
+    {
+        -tx.amount.abs()
+    } else {
+        tx.amount
+    };
+
+    let is_income = if clean_amount > 0.0 { 1 } else { 0 };
+    let category = if let Some(ref c) = tx.category {
+        if !c.trim().is_empty() {
+            c.trim().to_string()
+        } else {
+            categorize_transaction(&tx.description, clean_amount).to_string()
+        }
+    } else {
+        categorize_transaction(&tx.description, clean_amount).to_string()
+    };
+
+    conn.execute(
+        "INSERT INTO transactions (date, description, amount, category, is_income) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![tx.date, tx.description, clean_amount, category, is_income],
+    )?;
+
+    let id = conn.last_insert_rowid();
+    Ok(Transaction {
+        id: Some(id),
+        date: tx.date.clone(),
+        description: tx.description.clone(),
+        amount: clean_amount,
+        category,
+        is_income,
+    })
+}
+
+pub fn detect_subscriptions(conn: &Connection) -> Result<Vec<SubscriptionItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT description, category, ABS(amount), COUNT(*) as cnt, MAX(date) as last_d
+         FROM transactions
+         WHERE amount < 0
+         GROUP BY description, ROUND(ABS(amount), 1)
+         HAVING cnt >= 2
+         ORDER BY cnt DESC, ABS(amount) DESC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(SubscriptionItem {
+            merchant: row.get(0)?,
+            category: row.get(1)?,
+            amount: row.get(2)?,
+            occurrences: row.get(3)?,
+            last_date: row.get(4)?,
+            frequency: "Monthly / Recurring".to_string(),
+        })
+    })?;
+
+    let mut subs = Vec::new();
+    for r in rows {
+        subs.push(r?);
+    }
+
+    Ok(subs)
 }
