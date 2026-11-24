@@ -17,6 +17,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Database,
+  Search,
+  Filter,
+  X,
 } from 'lucide-react';
 import {
   BarChart,
@@ -90,6 +93,8 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -259,6 +264,15 @@ export default function App() {
         value,
       }))
     : [];
+
+  const filteredTransactions = transactions.filter((tx) => {
+    const matchesSearch =
+      tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.date.includes(searchQuery);
+    const matchesCat =
+      selectedCategory === 'All' || tx.category.toLowerCase() === selectedCategory.toLowerCase();
+    return matchesSearch && matchesCat;
+  });
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#fdfbf7] text-slate-900 font-sans">
@@ -521,37 +535,85 @@ export default function App() {
                       {previewOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                     </button>
                     {previewOpen && (
-                      <div className="max-h-60 overflow-y-auto border-t border-slate-200 text-xs">
-                        <table className="w-full text-left">
-                          <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
-                            <tr>
-                              <th className="p-2.5 pl-4">Date</th>
-                              <th className="p-2.5">Description</th>
-                              <th className="p-2.5">Category</th>
-                              <th className="p-2.5 pr-4 text-right">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {transactions.map((tx, idx) => (
-                              <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="p-2.5 pl-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">{tx.date}</td>
-                                <td className="p-2.5 font-medium text-slate-800">{tx.description}</td>
-                                <td className="p-2.5">
-                                  <span
-                                    className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                                      CATEGORY_BADGES[tx.category] || 'bg-slate-50 text-slate-700 border-slate-200'
-                                    }`}
-                                  >
-                                    {tx.category}
-                                  </span>
-                                </td>
-                                <td className={`p-2.5 pr-4 text-right font-mono font-semibold ${tx.amount < 0 ? 'text-slate-900' : 'text-emerald-600'}`}>
-                                  ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                              </tr>
+                      <div className="border-t border-slate-200">
+                        {/* Search and Category Filter Toolbar */}
+                        <div className="p-3 bg-slate-50/60 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div className="relative flex-1 min-w-[200px]">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="Search merchant or date (e.g. Starbucks, 2026-01)..."
+                              className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+                            />
+                            {searchQuery && (
+                              <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Category Filter Pills */}
+                          <div className="flex flex-wrap items-center gap-1">
+                            {['All', 'Food', 'Transport', 'Entertainment', 'Utilities', 'Shopping', 'Health', 'Other'].map((cat) => (
+                              <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer ${
+                                  selectedCategory === cat
+                                    ? 'bg-slate-900 text-white font-semibold'
+                                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                }`}
+                              >
+                                {cat}
+                              </button>
                             ))}
-                          </tbody>
-                        </table>
+                          </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="max-h-60 overflow-y-auto text-xs">
+                          {filteredTransactions.length === 0 ? (
+                            <div className="p-6 text-center text-slate-400">
+                              No transactions match the selected filter.
+                            </div>
+                          ) : (
+                            <table className="w-full text-left">
+                              <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                                <tr>
+                                  <th className="p-2.5 pl-4">Date</th>
+                                  <th className="p-2.5">Description</th>
+                                  <th className="p-2.5">Category</th>
+                                  <th className="p-2.5 pr-4 text-right">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {filteredTransactions.map((tx, idx) => (
+                                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="p-2.5 pl-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">{tx.date}</td>
+                                    <td className="p-2.5 font-medium text-slate-800">{tx.description}</td>
+                                    <td className="p-2.5">
+                                      <span
+                                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                          CATEGORY_BADGES[tx.category] || 'bg-slate-50 text-slate-700 border-slate-200'
+                                        }`}
+                                      >
+                                        {tx.category}
+                                      </span>
+                                    </td>
+                                    <td className={`p-2.5 pr-4 text-right font-mono font-semibold ${tx.amount < 0 ? 'text-slate-900' : 'text-emerald-600'}`}>
+                                      ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
