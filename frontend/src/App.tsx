@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Sparkles,
   Bot,
   User,
@@ -23,6 +24,8 @@ import {
   BookOpen,
   Check,
   LayoutDashboard,
+  Sliders,
+  Filter,
 } from 'lucide-react';
 import {
   BarChart,
@@ -53,6 +56,16 @@ interface ImportSummary {
   category_breakdown: Record<string, number>;
   date_range: string;
 }
+
+interface CategoryBudget {
+  category: string;
+  monthly_limit: f64;
+  current_spent: f64;
+  percentage: f64;
+  status: 'ok' | 'warning' | 'exceeded';
+}
+
+type f64 = number;
 
 interface Message {
   role: 'user' | 'assistant';
@@ -117,6 +130,21 @@ function formatJournalDate(dateStr: string): string {
   }
 }
 
+function formatMonthLabel(monthStr: string): string {
+  try {
+    const parts = monthStr.split('-');
+    if (parts.length === 2) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const dt = new Date(y, m, 1);
+      return dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    return monthStr;
+  } catch {
+    return monthStr;
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'landing' | 'dashboard'>('landing');
   const [dashboardView, setDashboardView] = useState<'dashboard' | 'journal' | 'chat' | 'subscriptions'>('dashboard');
@@ -125,6 +153,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -133,6 +162,16 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [trends, setTrends] = useState<{ date: string; daily: number; cumulative: number }[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
+  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
+
+  // Date Range Filter state
+  const [dateFilter, setDateFilter] = useState<string>('all');
+
+  // Budget Edit Modal state
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [targetBudgetCategory, setTargetBudgetCategory] = useState('Food');
+  const [targetBudgetLimit, setTargetBudgetLimit] = useState('');
+  const [budgetSaving, setBudgetSaving] = useState(false);
 
   // Add Expense Modal state
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
@@ -145,12 +184,45 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  // Derive distinct month keys (e.g. ['2026-03', '2026-02', '2026-01']) from all transactions
+  const availableMonths = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const t of allTransactions) {
+      if (t.date && t.date.length >= 7) {
+        set.add(t.date.substring(0, 7));
+      }
+    }
+    return Array.from(set).sort().reverse();
+  }, [allTransactions]);
+
+  const getDateQuery = (filterVal: string) => {
+    if (filterVal === 'all') {
+      return '';
+    }
+    if (filterVal === 'last_30_days') {
+      const now = new Date();
+      const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const start = past.toISOString().split('T')[0];
+      const end = now.toISOString().split('T')[0];
+      return `?start_date=${start}&end_date=${end}`;
+    }
+    // Specific month e.g. "2026-01"
+    const [yStr, mStr] = filterVal.split('-');
+    const y = parseInt(yStr, 10);
+    const m = parseInt(mStr, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const start = `${filterVal}-01`;
+    const end = `${filterVal}-${lastDay < 10 ? '0' : ''}${lastDay}`;
+    return `?start_date=${start}&end_date=${end}`;
+  };
+
   useEffect(() => {
-    fetchSummary();
-    fetchTransactions();
-    fetchTrends();
-    fetchSubscriptions();
+    fetchInitial();
   }, []);
+
+  useEffect(() => {
+    fetchFilteredData(dateFilter);
+  }, [dateFilter]);
 
   useEffect(() => {
     if (dashboardView === 'chat') {
@@ -158,37 +230,35 @@ export default function App() {
     }
   }, [messages, loading, dashboardView]);
 
-  const fetchSummary = async () => {
+  const fetchInitial = async () => {
     try {
-      const res = await fetch('/api/summary');
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
+      const txRes = await fetch('/api/transactions');
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setAllTransactions(txData);
+        setTransactions(txData);
       }
+      fetchFilteredData('all');
+      fetchSubscriptions();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const fetchTransactions = async () => {
+  const fetchFilteredData = async (filterVal: string) => {
+    const query = getDateQuery(filterVal);
     try {
-      const res = await fetch('/api/transactions');
-      if (res.ok) {
-        const data = await res.json();
-        setTransactions(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+      const [sumRes, txRes, trRes, budRes] = await Promise.all([
+        fetch(`/api/summary${query}`),
+        fetch(`/api/transactions${query}`),
+        fetch(`/api/trends${query}`),
+        fetch(`/api/budgets${query}`),
+      ]);
 
-  const fetchTrends = async () => {
-    try {
-      const res = await fetch('/api/trends');
-      if (res.ok) {
-        const data = await res.json();
-        setTrends(data);
-      }
+      if (sumRes.ok) setSummary(await sumRes.json());
+      if (txRes.ok) setTransactions(await txRes.json());
+      if (trRes.ok) setTrends(await trRes.json());
+      if (budRes.ok) setBudgets(await budRes.json());
     } catch (err) {
       console.error(err);
     }
@@ -198,11 +268,36 @@ export default function App() {
     try {
       const res = await fetch('/api/subscriptions');
       if (res.ok) {
-        const data = await res.json();
-        setSubscriptions(data);
+        setSubscriptions(await res.json());
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSetBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const limit = parseFloat(targetBudgetLimit);
+    if (!targetBudgetCategory || isNaN(limit) || limit <= 0) return;
+
+    setBudgetSaving(true);
+    try {
+      const res = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: targetBudgetCategory, monthly_limit: limit }),
+      });
+
+      if (res.ok) {
+        await fetchFilteredData(dateFilter);
+        setIsBudgetModalOpen(false);
+        setTargetBudgetLimit('');
+        setStatusMessage(`Updated monthly budget for ${targetBudgetCategory} to $${limit.toFixed(2)}.`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBudgetSaving(false);
     }
   };
 
@@ -225,7 +320,12 @@ export default function App() {
       });
 
       if (res.ok) {
-        await Promise.all([fetchTransactions(), fetchSummary(), fetchTrends(), fetchSubscriptions()]);
+        // Refetch all transactions to update month list, then filtered data
+        const allRes = await fetch('/api/transactions');
+        if (allRes.ok) setAllTransactions(await allRes.json());
+        await fetchFilteredData(dateFilter);
+        await fetchSubscriptions();
+
         setNewDesc('');
         setNewAmount('');
         setNewCategory('');
@@ -247,7 +347,11 @@ export default function App() {
       if (res.ok) {
         const data: ImportSummary = await res.json();
         setSummary(data);
-        await Promise.all([fetchTransactions(), fetchTrends(), fetchSubscriptions()]);
+        const allRes = await fetch('/api/transactions');
+        if (allRes.ok) setAllTransactions(await allRes.json());
+        await fetchFilteredData('all');
+        setDateFilter('all');
+        await fetchSubscriptions();
         setStatusMessage(`Loaded ${data.rows_imported} sample transactions.`);
         setActiveTab('dashboard');
       }
@@ -278,7 +382,11 @@ export default function App() {
       if (res.ok) {
         const data: ImportSummary = await res.json();
         setSummary(data);
-        await Promise.all([fetchTransactions(), fetchTrends(), fetchSubscriptions()]);
+        const allRes = await fetch('/api/transactions');
+        if (allRes.ok) setAllTransactions(await allRes.json());
+        await fetchFilteredData('all');
+        setDateFilter('all');
+        await fetchSubscriptions();
         setStatusMessage(`Imported ${data.rows_imported} transactions (${data.date_range}).`);
         setActiveTab('dashboard');
       } else {
@@ -300,8 +408,10 @@ export default function App() {
         const data = await res.json();
         setSummary(data);
         setTransactions([]);
+        setAllTransactions([]);
         setTrends([]);
         setSubscriptions([]);
+        setBudgets([]);
         setMessages([]);
         setStatusMessage(null);
       }
@@ -430,6 +540,10 @@ export default function App() {
     return topCat ? { name: topCat, amount: topVal } : null;
   }, [summary]);
 
+  const overBudgetCategories = React.useMemo(() => {
+    return budgets.filter((b) => b.status === 'exceeded');
+  }, [budgets]);
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#090d16] text-slate-100 font-sans antialiased">
       {/* View 1: Minimalist No-Scroll Landing Page */}
@@ -438,14 +552,13 @@ export default function App() {
           className="h-screen w-screen overflow-hidden flex flex-col relative bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
         >
-          {/* Main Hero Content */}
           <main className="relative z-10 px-6 max-w-3xl mx-auto flex flex-col items-center text-center pt-24 sm:pt-32">
             <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.18] mb-4">
               Manage Finance Like Never Before with Agent
             </h1>
 
             <p className="text-base sm:text-lg text-slate-700 font-normal leading-relaxed mb-8 max-w-xl">
-              Track daily expenses, identify recurring subscriptions, and get actionable answers to every personal finance question.
+              Track daily expenses, set category budgets, and get actionable answers to every personal finance question.
             </p>
 
             <button
@@ -470,12 +583,30 @@ export default function App() {
               Personal Finance Agent
             </button>
 
-            {/* Right: Active status indicator */}
+            {/* Right: Date Range Filter & Transaction Status */}
             <div className="flex items-center gap-3">
-              {summary && summary.rows_imported > 0 && (
-                <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
+              {/* Date Filter Dropdown */}
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs">
+                <Filter className="w-3.5 h-3.5 text-indigo-400" />
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer"
+                >
+                  <option value="all" className="bg-slate-900 text-white">All Time</option>
+                  <option value="last_30_days" className="bg-slate-900 text-white">Last 30 Days</option>
+                  {availableMonths.map((m) => (
+                    <option key={m} value={m} className="bg-slate-900 text-white">
+                      {formatMonthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {summary && (
+                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span className="font-mono">{summary.rows_imported} transactions active</span>
+                  <span className="font-mono">{summary.rows_imported} txs active</span>
                 </div>
               )}
             </div>
@@ -483,7 +614,7 @@ export default function App() {
 
           {/* Main Dashboard Layout */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar (Dark Mode) */}
+            {/* Sidebar */}
             <aside className="w-72 bg-[#0d1424] border-r border-slate-800 p-5 flex flex-col justify-between overflow-y-auto shadow-subtle flex-shrink-0">
               <div className="space-y-6">
                 {/* The ONLY Log Daily Expense Button */}
@@ -675,7 +806,7 @@ export default function App() {
 
             {/* Main Content Area: View Switcher */}
             <main className="flex-1 flex flex-col h-full bg-[#090d16] overflow-hidden">
-              {/* VIEW 1: Dedicated Full Dashboard Section */}
+              {/* VIEW 1: Dedicated Full Dashboard Section with Budgets and Charts */}
               {dashboardView === 'dashboard' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                   <header className="p-6 bg-[#0d1424] border-b border-slate-800 flex-shrink-0 shadow-subtle">
@@ -683,22 +814,57 @@ export default function App() {
                       <div>
                         <h1 className="text-xl font-bold tracking-tight text-white">Spending Overview & Analytics</h1>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Visual spending velocity, category distribution bars, and cashflow metrics from local SQLite.
+                          Visual spending velocity, category distribution bars, and budget health for {dateFilter === 'all' ? 'All Time' : formatMonthLabel(dateFilter)}.
                         </p>
                       </div>
 
-                      {summary && (
-                        <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-300 border border-slate-700/60">
-                          <span>{summary.date_range}</span>
-                          <span className="text-slate-500">•</span>
-                          <span>{summary.rows_imported} txs</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          onClick={() => setIsBudgetModalOpen(true)}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-subtle"
+                        >
+                          <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Set Budgets</span>
+                        </button>
+
+                        {summary && (
+                          <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-300 border border-slate-700/60">
+                            <span>{summary.date_range}</span>
+                            <span className="text-slate-500">•</span>
+                            <span>{summary.rows_imported} txs</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </header>
 
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     <div className="max-w-6xl mx-auto space-y-6">
+                      {/* Over-budget Warning Alerts */}
+                      {overBudgetCategories.length > 0 && (
+                        <div className="p-4 bg-rose-950/40 border border-rose-800/80 rounded-2xl flex items-center justify-between gap-3 shadow-card animate-in fade-in duration-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-rose-900/60 border border-rose-700/60 flex items-center justify-center text-rose-400 flex-shrink-0">
+                              <AlertTriangle className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-rose-300 uppercase tracking-wider">
+                                Over-Budget Alert
+                              </h4>
+                              <p className="text-xs text-rose-200/90 mt-0.5">
+                                {overBudgetCategories.map((b) => `${b.category} (${b.percentage.toFixed(0)}%)`).join(', ')} exceeded monthly spending limits!
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setIsBudgetModalOpen(true)}
+                            className="bg-rose-900/60 hover:bg-rose-850 text-rose-200 border border-rose-700 text-xs font-medium py-1.5 px-3 rounded-lg transition cursor-pointer"
+                          >
+                            Adjust Targets
+                          </button>
+                        </div>
+                      )}
+
                       {/* Top KPI Metrics Row */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="p-5 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
@@ -744,6 +910,97 @@ export default function App() {
                             {topCategory ? `$${topCategory.amount.toFixed(2)} total` : 'No data'}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Monthly Category Budgets Section */}
+                      <div className="p-6 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                              <span>Monthly Category Budgets</span>
+                              {overBudgetCategories.length > 0 && (
+                                <span className="bg-rose-950 text-rose-300 border border-rose-800/80 text-[11px] font-mono px-2 py-0.5 rounded-full">
+                                  {overBudgetCategories.length} Exceeded
+                                </span>
+                              )}
+                            </h3>
+                            <p className="text-xs text-slate-400">Track real-time spending caps against monthly targets.</p>
+                          </div>
+                          <button
+                            onClick={() => setIsBudgetModalOpen(true)}
+                            className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>Edit Targets</span>
+                          </button>
+                        </div>
+
+                        {budgets.length === 0 ? (
+                          <div className="text-center py-6 text-xs text-slate-500">
+                            No budget data available. Import statement transactions or click "Edit Targets" to set limits.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {budgets.map((b) => {
+                              const remaining = b.monthly_limit - b.current_spent;
+                              return (
+                                <div
+                                  key={b.category}
+                                  className="p-4 bg-slate-900/70 border border-slate-800 rounded-xl space-y-2.5 hover:border-slate-700 transition"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="w-2.5 h-2.5 rounded-full"
+                                        style={{ backgroundColor: CATEGORY_COLORS[b.category] || '#64748b' }}
+                                      />
+                                      <span className="text-xs font-semibold text-slate-200">{b.category}</span>
+                                    </div>
+                                    <span
+                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full font-mono border ${
+                                        b.status === 'exceeded'
+                                          ? 'bg-rose-950/70 text-rose-300 border-rose-800/80'
+                                          : b.status === 'warning'
+                                          ? 'bg-amber-950/70 text-amber-300 border-amber-800/80'
+                                          : 'bg-emerald-950/70 text-emerald-300 border-emerald-800/80'
+                                      }`}
+                                    >
+                                      {b.percentage.toFixed(0)}%
+                                    </span>
+                                  </div>
+
+                                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        b.status === 'exceeded'
+                                          ? 'bg-rose-500'
+                                          : b.status === 'warning'
+                                          ? 'bg-amber-500'
+                                          : 'bg-emerald-500'
+                                      }`}
+                                      style={{ width: `${Math.min(b.percentage, 100)}%` }}
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-xs font-mono">
+                                    <span className="text-slate-400">
+                                      ${b.current_spent.toFixed(0)} / ${b.monthly_limit.toFixed(0)}
+                                    </span>
+                                    <span
+                                      className={
+                                        remaining >= 0 ? 'text-slate-400' : 'text-rose-400 font-semibold'
+                                      }
+                                    >
+                                      {remaining >= 0
+                                        ? `$${remaining.toFixed(0)} left`
+                                        : `$${Math.abs(remaining).toFixed(0)} over`}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Charts Grid: Bar Chart & Spending Velocity Area Chart */}
@@ -796,12 +1053,11 @@ export default function App() {
                               </div>
                             ) : (
                               <div className="h-64 flex items-center justify-center text-xs text-slate-500">
-                                No category data yet. Import statements or load sample data.
+                                No category data for this time period.
                               </div>
                             )}
                           </div>
 
-                          {/* Category breakdown progress bars */}
                           {summary && summary.category_breakdown && (
                             <div className="pt-4 border-t border-slate-800 grid grid-cols-2 gap-3 text-xs">
                               {Object.entries(summary.category_breakdown).slice(0, 6).map(([cat, val]) => {
@@ -879,7 +1135,7 @@ export default function App() {
                               </div>
                             ) : (
                               <div className="h-64 flex items-center justify-center text-xs text-slate-500">
-                                No trend data yet. Load sample statements to see spending velocity.
+                                No trend data for this time period.
                               </div>
                             )}
                           </div>
@@ -909,7 +1165,7 @@ export default function App() {
                         <div>
                           <h1 className="text-xl font-bold tracking-tight text-white">Daily Expense Journal</h1>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            Day-by-day record of personal expenditures. Log daily spend or track imported statement timeline.
+                            Day-by-day record of personal expenditures ({dateFilter === 'all' ? 'All Time' : formatMonthLabel(dateFilter)}).
                           </p>
                         </div>
                       </div>
@@ -934,9 +1190,9 @@ export default function App() {
                         <div className="w-12 h-12 rounded-full bg-indigo-950/60 text-indigo-400 border border-indigo-800/60 flex items-center justify-center mx-auto mb-3">
                           <BookOpen className="w-6 h-6" />
                         </div>
-                        <h3 className="text-sm font-bold text-white mb-1">Your Journal is Empty</h3>
+                        <h3 className="text-sm font-bold text-white mb-1">No Entries For This Filter</h3>
                         <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                          Start logging your day-to-day purchases like coffee, groceries, or dinner, or import bank transactions to populate your journal.
+                          No transactions recorded in the selected date range. Try switching to "All Time" or log an expense.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
                           <button
@@ -947,11 +1203,10 @@ export default function App() {
                             <span>Log Today's Expense</span>
                           </button>
                           <button
-                            onClick={handleLoadSample}
+                            onClick={() => setDateFilter('all')}
                             className="bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-medium py-2.5 px-4 rounded-xl border border-slate-700 transition shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Load Demo Journal</span>
+                            <span>Show All Time</span>
                           </button>
                         </div>
                       </div>
@@ -962,7 +1217,6 @@ export default function App() {
                             key={dateStr}
                             className="bg-[#11192e] border border-slate-800 rounded-2xl overflow-hidden shadow-card hover:border-slate-700 transition-all duration-200"
                           >
-                            {/* Day Header */}
                             <div className="px-5 py-3.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-slate-400" />
@@ -981,7 +1235,6 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* Day Transactions List */}
                             <div className="divide-y divide-slate-800/60">
                               {dayTxs.map((tx, idx) => (
                                 <div
@@ -1376,7 +1629,92 @@ export default function App() {
             </main>
           </div>
 
-          {/* Modal: Log Daily Expense (Dark Mode) */}
+          {/* Modal: Set Monthly Category Budget */}
+          {isBudgetModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <div
+                className="bg-[#11192e] rounded-2xl border border-slate-700 shadow-2xl max-w-md w-full overflow-hidden text-white animate-in fade-in duration-150"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-950/70 border border-indigo-800/60 text-indigo-400 flex items-center justify-center shadow-subtle">
+                      <Sliders className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Set Category Budget</h3>
+                      <p className="text-xs text-slate-400">Configure monthly expenditure ceiling.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsBudgetModalOpen(false)}
+                    className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSetBudget} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={targetBudgetCategory}
+                      onChange={(e) => setTargetBudgetCategory(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-subtle cursor-pointer"
+                    >
+                      {['Food', 'Transport', 'Entertainment', 'Utilities', 'Shopping', 'Health', 'Other'].map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                      Monthly Limit ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      required
+                      placeholder="e.g. 500"
+                      value={targetBudgetLimit}
+                      onChange={(e) => setTargetBudgetLimit(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-subtle"
+                    />
+                  </div>
+
+                  <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setIsBudgetModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={budgetSaving || !targetBudgetLimit}
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-subtle transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {budgetSaving ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                      <span>Save Budget Limit</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Log Daily Expense */}
           {isAddExpenseOpen && (
             <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
               <div

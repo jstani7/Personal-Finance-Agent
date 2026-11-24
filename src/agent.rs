@@ -241,35 +241,19 @@ pub fn find_largest_discretionary_expenses(conn: &Connection, limit: usize) -> R
 }
 
 pub fn check_budget_alerts(conn: &Connection) -> Result<String> {
-    let mut stmt = conn.prepare(
-        "SELECT category, SUM(ABS(amount)) FROM transactions WHERE amount < 0 GROUP BY category ORDER BY SUM(ABS(amount)) DESC",
-    )?;
-
-    let rows = stmt.query_map([], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-    })?;
-
-    let mut cat_sums = Vec::new();
-    let mut total = 0.0;
-    for r in rows {
-        let (cat, sum) = r?;
-        total += sum;
-        cat_sums.push((cat, sum));
+    let budgets = crate::db::get_category_budgets(conn, None, None)?;
+    if budgets.is_empty() {
+        return Ok("No transactions or category budgets found.".to_string());
     }
 
-    if cat_sums.is_empty() {
-        return Ok("No transactions loaded yet.".to_string());
-    }
-
-    let mut lines = vec!["Budget & Overspending Risk Analysis:".to_string(), "".to_string()];
-    for (cat, val) in &cat_sums {
-        let share = if total > 0.0 { 100.0 * val / total } else { 0.0 };
-        if share > 30.0 {
-            lines.push(format!("- **CRITICAL ALERT: {}**: ${:.2} ({:.1}% of entire budget). Exceeds recommended 30% single-category cap.", cat, val, share));
-        } else if share > 20.0 {
-            lines.push(format!("- **WATCH: {}**: ${:.2} ({:.1}% of total spend). Nearing high allocation threshold.", cat, val, share));
+    let mut lines = vec!["Monthly Category Budgets & Risk Analysis:".to_string(), "".to_string()];
+    for b in budgets {
+        if b.status == "exceeded" {
+            lines.push(format!("- **CRITICAL OVERSPEND: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). Exceeded by ${:.2}!", b.category, b.current_spent, b.monthly_limit, b.percentage, b.current_spent - b.monthly_limit));
+        } else if b.status == "warning" {
+            lines.push(format!("- **WARNING / NEAR LIMIT: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). Only ${:.2} left.", b.category, b.current_spent, b.monthly_limit, b.percentage, b.monthly_limit - b.current_spent));
         } else {
-            lines.push(format!("- **ON TRACK: {}**: ${:.2} ({:.1}% of total spend). Healthy allocation.", cat, val, share));
+            lines.push(format!("- **ON TRACK: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). ${:.2} remaining.", b.category, b.current_spent, b.monthly_limit, b.percentage, b.monthly_limit - b.current_spent));
         }
     }
 

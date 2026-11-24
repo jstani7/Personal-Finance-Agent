@@ -121,7 +121,7 @@ pub fn ingest_csv_data(csv_content: &[u8], conn: &mut Connection, replace: bool)
     }
 
     insert_transactions(conn, &transactions, replace)?;
-    get_import_summary(conn)
+    get_import_summary(conn, None, None)
 }
 
 pub fn ingest_csv_file(path: impl AsRef<Path>, conn: &mut Connection, replace: bool) -> Result<ImportSummary> {
@@ -218,5 +218,5 @@ pub async fn parse_pdf_data(pdf_bytes: &[u8], conn: &mut Connection, replace: bo
     }
 
     insert_transactions(conn, &transactions, replace)?;
-    get_import_summary(conn)
+    get_import_summary(conn, None, None)
 }
