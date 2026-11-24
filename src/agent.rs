@@ -276,6 +276,25 @@ pub fn check_budget_alerts(conn: &Connection) -> Result<String> {
     Ok(lines.join("\n"))
 }
 
+pub fn detect_recurring_subscriptions(conn: &Connection) -> Result<String> {
+    let subs = crate::db::detect_subscriptions(conn)?;
+    if subs.is_empty() {
+        return Ok("No recurring subscriptions or periodic bills detected in the transactions.".to_string());
+    }
+
+    let total_monthly: f64 = subs.iter().map(|s| s.amount).sum();
+    let mut lines = vec![
+        format!("Detected Recurring Subscriptions (Total recurring commitment: ${:.2}/month):", total_monthly),
+        "".to_string(),
+    ];
+
+    for s in subs {
+        lines.push(format!("- **{}** | {} | ${:.2}/mo (billed {} times, latest: {})", s.merchant, s.category, s.amount, s.occurrences, s.last_date));
+    }
+
+    Ok(lines.join("\n"))
+}
+
 pub fn get_tools_definition() -> Value {
     json!([
         {
@@ -370,6 +389,17 @@ pub fn get_tools_definition() -> Value {
                     "properties": {}
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "detect_recurring_subscriptions",
+                "description": "Scan transactions to identify recurring subscription charges (Netflix, Spotify, utilities, gym memberships, etc.) and calculate total fixed monthly burn.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
         }
     ])
 }
@@ -418,6 +448,12 @@ pub fn execute_tool(db_path: &Path, name: &str, args_json: &str) -> String {
         }
         "check_budget_alerts" => {
             match check_budget_alerts(&conn) {
+                Ok(res) => res,
+                Err(e) => format!("Error: {}", e),
+            }
+        }
+        "detect_recurring_subscriptions" => {
+            match detect_recurring_subscriptions(&conn) {
                 Ok(res) => res,
                 Err(e) => format!("Error: {}", e),
             }
