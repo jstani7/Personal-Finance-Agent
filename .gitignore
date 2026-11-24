@@ -1,0 +1,22 @@
+# Environment variables
+.env
+
+# SQLite database
+finance.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# macOS
+.DS_Store
+
+# Streamlit
+.streamlit/
