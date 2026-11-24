@@ -265,32 +265,25 @@ export default function App() {
       {/* View 1: Minimalist No-Scroll Landing Page */}
       {activeTab === 'landing' ? (
         <div
-          className="h-screen w-screen overflow-hidden flex flex-col justify-start relative bg-cover bg-center bg-no-repeat"
+          className="h-screen w-screen overflow-hidden flex flex-col relative bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
         >
-          {/* Subtle top light gradient for crisp typography contrast without blurring background */}
-          <div className="absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-[#fdfbf7]/80 via-[#fdfbf7]/40 to-transparent pointer-events-none" />
-
-          {/* Top Hero Content (positioned near top, centered, crisp typography) */}
-          <main className="relative z-10 px-6 max-w-4xl mx-auto flex flex-col items-center text-center pt-14 sm:pt-18">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12] mb-4">
-              Manage Finance{' '}
-              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-amber-600 bg-clip-text text-transparent">
-                Like Never Before
-              </span>{' '}
-              with Agent
+          {/* Main Hero Content (clean solid typography, comfortable top spacing) */}
+          <main className="relative z-10 px-6 max-w-3xl mx-auto flex flex-col items-center text-center pt-24 sm:pt-32">
+            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-900 tracking-tight leading-[1.15] mb-4">
+              Manage Finance Like Never Before with Agent
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed mb-7 max-w-2xl">
-              Turn raw bank statements into clear answers, intelligent spending breakdowns, and effortless financial control.
+            <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed mb-8 max-w-xl">
+              Upload your bank statements, track spending habits, and get clear answers to every financial question.
             </p>
 
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.99] transition-all flex items-center gap-2.5 group cursor-pointer border border-slate-700/40"
+              className="bg-slate-900 hover:bg-black text-white font-medium text-sm sm:text-base px-8 py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <span>Get Started</span>
-              <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="w-4 h-4 text-slate-300" />
             </button>
           </main>
         </div>
