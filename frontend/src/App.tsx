@@ -13,9 +13,7 @@ import {
   Bot,
   User,
   ArrowUpRight,
-  Wallet,
   ArrowRight,
-  ArrowLeft,
   Search,
   X,
   Plus,
@@ -24,6 +22,8 @@ import {
   MessageSquare,
   BookOpen,
   Check,
+  LayoutDashboard,
+  TrendingUp,
 } from 'lucide-react';
 import {
   BarChart,
@@ -37,7 +37,7 @@ import {
   Cell,
 } from 'recharts';
 
-import heroImage from './assets/hero.jpeg';
+import heroImage from './assets/hero.webp';
 
 interface Transaction {
   id?: number;
@@ -120,7 +120,7 @@ function formatJournalDate(dateStr: string): string {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'landing' | 'dashboard'>('landing');
-  const [dashboardView, setDashboardView] = useState<'journal' | 'chat' | 'subscriptions'>('journal');
+  const [dashboardView, setDashboardView] = useState<'dashboard' | 'journal' | 'chat' | 'subscriptions'>('dashboard');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputPrompt, setInputPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -133,7 +133,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [trends, setTrends] = useState<{ date: string; daily: number; cumulative: number }[]>([]);
-  const [chartView, setChartView] = useState<'category' | 'velocity'>('category');
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
 
   // Add Expense Modal state
@@ -407,6 +406,31 @@ export default function App() {
     return subscriptions.reduce((acc, s) => acc + s.amount, 0);
   }, [subscriptions]);
 
+  const totalIncome = React.useMemo(() => {
+    return transactions
+      .filter((tx) => tx.amount > 0)
+      .reduce((acc, tx) => acc + tx.amount, 0);
+  }, [transactions]);
+
+  const averageDailySpend = React.useMemo(() => {
+    if (journalGroups.length === 0) return 0;
+    const total = journalGroups.reduce((acc, [, item]) => acc + item.totalDailySpend, 0);
+    return total / journalGroups.length;
+  }, [journalGroups]);
+
+  const topCategory = React.useMemo(() => {
+    if (!summary?.category_breakdown) return null;
+    let topCat = '';
+    let topVal = 0;
+    for (const [cat, val] of Object.entries(summary.category_breakdown)) {
+      if (val > topVal) {
+        topVal = val;
+        topCat = cat;
+      }
+    }
+    return topCat ? { name: topCat, amount: topVal } : null;
+  }, [summary]);
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
       {/* View 1: Minimalist No-Scroll Landing Page */}
@@ -439,46 +463,31 @@ export default function App() {
         <div className="flex flex-col h-screen overflow-hidden">
           {/* Dashboard Header Bar */}
           <nav className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-subtle">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setActiveTab('landing')}
-                className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition py-1.5 px-3 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Landing Page</span>
-              </button>
-              <div className="h-4 w-[1px] bg-slate-200" />
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-subtle">
-                  <Wallet className="w-4 h-4 text-amber-300" />
-                </div>
-                <span className="font-semibold text-sm tracking-tight text-slate-900">Personal Finance Agent</span>
-              </div>
-            </div>
+            {/* Left: Clicking brand text goes to landing page without any icon or back button */}
+            <button
+              onClick={() => setActiveTab('landing')}
+              className="font-bold text-sm tracking-tight text-slate-900 hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              Personal Finance Agent
+            </button>
 
+            {/* Right: Active status indicator only (no extra Log Expense button) */}
             <div className="flex items-center gap-3">
               {summary && summary.rows_imported > 0 && (
-                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 font-medium">
+                <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span className="font-mono">{summary.rows_imported} transactions active</span>
                 </div>
               )}
-              <button
-                onClick={() => setIsAddExpenseOpen(true)}
-                className="bg-slate-900 hover:bg-black text-white text-xs font-medium py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 transition shadow-subtle cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Log Expense</span>
-              </button>
             </div>
           </nav>
 
           {/* Main Dashboard Layout */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
-            <aside className="w-80 bg-white border-r border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shadow-subtle flex-shrink-0">
+            {/* Sidebar (Cleaned: no total spending or chart clutter!) */}
+            <aside className="w-72 bg-white border-r border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shadow-subtle flex-shrink-0">
               <div className="space-y-6">
-                {/* Primary Action Button */}
+                {/* The ONLY Log Daily Expense Button */}
                 <button
                   onClick={() => setIsAddExpenseOpen(true)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2.5 px-4 rounded-xl shadow-subtle hover:shadow-card transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -492,6 +501,19 @@ export default function App() {
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block px-2 mb-2">
                     Workspaces
                   </span>
+
+                  <button
+                    onClick={() => setDashboardView('dashboard')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                      dashboardView === 'dashboard'
+                        ? 'bg-slate-900 text-white shadow-card font-semibold'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutDashboard className={`w-4 h-4 ${dashboardView === 'dashboard' ? 'text-amber-300' : 'text-slate-400'}`} />
+                    <span>Dashboard</span>
+                  </button>
+
                   <button
                     onClick={() => setDashboardView('journal')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
@@ -618,162 +640,6 @@ export default function App() {
                     </div>
                   )}
                 </div>
-
-                {/* Summary KPIs & Chart */}
-                {summary && summary.rows_imported > 0 && (
-                  <div className="space-y-4 pt-1">
-                    <div className="bg-slate-900 p-4 rounded-xl text-white shadow-card">
-                      <span className="text-xs font-medium text-slate-300 uppercase tracking-wider block mb-1">
-                        Total spending
-                      </span>
-                      <span className="text-2xl font-bold font-mono tracking-tight text-white block">
-                        ${summary.total_spending.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                      <span className="text-xs text-slate-400 block mt-1">
-                        Across {summary.rows_imported} transactions
-                      </span>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                          Categories
-                        </span>
-                        <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs">
-                          <button
-                            onClick={() => setChartView('category')}
-                            className={`px-2 py-1 rounded-md transition ${
-                              chartView === 'category' ? 'bg-white text-slate-900 font-semibold shadow-subtle' : 'text-slate-500'
-                            }`}
-                          >
-                            Bar
-                          </button>
-                          <button
-                            onClick={() => setChartView('velocity')}
-                            className={`px-2 py-1 rounded-md transition ${
-                              chartView === 'velocity' ? 'bg-white text-slate-900 font-semibold shadow-subtle' : 'text-slate-500'
-                            }`}
-                          >
-                            Velocity
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs mb-3">
-                        {Object.entries(summary.category_breakdown).slice(0, 5).map(([cat, val]) => {
-                          const pct = summary.total_spending > 0 ? (val / summary.total_spending) * 100 : 0;
-                          return (
-                            <div key={cat} className="p-1.5 rounded-lg hover:bg-slate-50 transition">
-                              <div className="flex justify-between items-center mb-1 text-xs">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="w-2 h-2 rounded-full"
-                                    style={{ backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
-                                  ></span>
-                                  <span className="font-medium text-slate-700">{cat}</span>
-                                </div>
-                                <div className="flex items-center gap-2 font-mono text-xs">
-                                  <span className="text-slate-400">{pct.toFixed(0)}%</span>
-                                  <span className="font-semibold text-slate-900">
-                                    ${val.toFixed(0)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-300"
-                                  style={{
-                                    width: `${Math.min(pct, 100)}%`,
-                                    backgroundColor: CATEGORY_COLORS[cat] || '#64748b',
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Mini Recharts view */}
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-subtle">
-                        {chartView === 'category' && chartData.length > 0 && (
-                          <div className="h-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={chartData} margin={{ top: 6, right: 6, left: -24, bottom: 18 }}>
-                                <XAxis
-                                  dataKey="name"
-                                  angle={-30}
-                                  textAnchor="end"
-                                  tick={{ fontSize: 10, fill: '#64748b' }}
-                                  interval={0}
-                                />
-                                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: '#0f172a',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    color: '#fff',
-                                    fontSize: '11px',
-                                  }}
-                                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Spend']}
-                                />
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                  {chartData.map((entry, index) => (
-                                    <Cell
-                                      key={`cell-${index}`}
-                                      fill={CATEGORY_COLORS[entry.name] || '#64748b'}
-                                    />
-                                  ))}
-                                </Bar>
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-
-                        {chartView === 'velocity' && trends.length > 0 && (
-                          <div className="h-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={trends} margin={{ top: 6, right: 6, left: -24, bottom: 18 }}>
-                                <defs>
-                                  <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
-                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis
-                                  dataKey="date"
-                                  angle={-30}
-                                  textAnchor="end"
-                                  tick={{ fontSize: 10, fill: '#64748b' }}
-                                  interval={Math.ceil(trends.length / 4)}
-                                />
-                                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: '#0f172a',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    color: '#fff',
-                                    fontSize: '11px',
-                                  }}
-                                  formatter={(val: number) => [`$${val.toFixed(2)}`, 'Cumulative']}
-                                />
-                                <Area
-                                  type="monotone"
-                                  dataKey="cumulative"
-                                  stroke="#4f46e5"
-                                  strokeWidth={2}
-                                  fillOpacity={1}
-                                  fill="url(#velocityGrad)"
-                                />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Export and Clear Data Footer */}
@@ -810,10 +676,232 @@ export default function App() {
 
             {/* Main Content Area: View Switcher */}
             <main className="flex-1 flex flex-col h-full bg-slate-50/60 overflow-hidden">
-              {/* VIEW A: Daily Spending Journal */}
+              {/* VIEW 1: Dedicated Full Dashboard Section (All bars, spending KPIs, velocity charts) */}
+              {dashboardView === 'dashboard' && (
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                  <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
+                    <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h1 className="text-xl font-bold tracking-tight text-slate-900">Spending Overview & Analytics</h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Visual spending velocity, category distribution bars, and cashflow metrics from local SQLite.
+                        </p>
+                      </div>
+
+                      {summary && (
+                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-700">
+                          <span>{summary.date_range}</span>
+                          <span className="text-slate-400">•</span>
+                          <span>{summary.rows_imported} txs</span>
+                        </div>
+                      )}
+                    </div>
+                  </header>
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div className="max-w-6xl mx-auto space-y-6">
+                      {/* Top KPI Metrics Row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                            Total Outflow / Spending
+                          </span>
+                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                            ${summary ? summary.total_spending.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                          </span>
+                          <span className="text-xs text-slate-400 block mt-1">
+                            {summary?.rows_imported || 0} debit transactions
+                          </span>
+                        </div>
+
+                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                            Total Inflow / Income
+                          </span>
+                          <span className="text-2xl font-bold font-mono text-emerald-600 mt-1 block">
+                            ${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-xs text-slate-400 block mt-1">Salary & deposits</span>
+                        </div>
+
+                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                            Average Daily Spending
+                          </span>
+                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                            ${averageDailySpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-xs text-slate-400 block mt-1">Across {journalGroups.length} logged days</span>
+                        </div>
+
+                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                            Top Spending Category
+                          </span>
+                          <span className="text-2xl font-bold font-mono text-indigo-700 mt-1 block">
+                            {topCategory ? topCategory.name : 'None'}
+                          </span>
+                          <span className="text-xs text-slate-400 block mt-1 font-mono">
+                            {topCategory ? `$${topCategory.amount.toFixed(2)} total` : 'No data'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Charts Grid: Bar Chart & Spending Velocity Area Chart */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Chart 1: Category Distribution Bar Chart */}
+                        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-card flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-900">Category Spending Distribution</h3>
+                                <p className="text-xs text-slate-500">Expenditure broken down across expense types.</p>
+                              </div>
+                              <span className="text-xs font-mono font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                                Bar Chart
+                              </span>
+                            </div>
+
+                            {chartData.length > 0 ? (
+                              <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                                    <XAxis
+                                      dataKey="name"
+                                      angle={-25}
+                                      textAnchor="end"
+                                      tick={{ fontSize: 11, fill: '#64748b' }}
+                                      interval={0}
+                                    />
+                                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: '#0f172a',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        color: '#fff',
+                                        fontSize: '11px',
+                                      }}
+                                      formatter={(val: number) => [`$${val.toFixed(2)}`, 'Spend']}
+                                    />
+                                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                      {chartData.map((entry, index) => (
+                                        <Cell
+                                          key={`cell-${index}`}
+                                          fill={CATEGORY_COLORS[entry.name] || '#64748b'}
+                                        />
+                                      ))}
+                                    </Bar>
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            ) : (
+                              <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                                No category data yet. Import statements or load sample data.
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Category breakdown progress bars */}
+                          {summary && summary.category_breakdown && (
+                            <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+                              {Object.entries(summary.category_breakdown).slice(0, 6).map(([cat, val]) => {
+                                const pct = summary.total_spending > 0 ? (val / summary.total_spending) * 100 : 0;
+                                return (
+                                  <div key={cat} className="space-y-1">
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="font-medium text-slate-700">{cat}</span>
+                                      <span className="font-mono text-slate-500 font-semibold">${val.toFixed(0)}</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full rounded-full"
+                                        style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Chart 2: Cumulative Spending Velocity Area Chart */}
+                        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-card flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-900">Cumulative Spending Velocity</h3>
+                                <p className="text-xs text-slate-500">Day-over-day expenditure acceleration and cumulative burn.</p>
+                              </div>
+                              <span className="text-xs font-mono font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                                Area Trend
+                              </span>
+                            </div>
+
+                            {trends.length > 0 ? (
+                              <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                                    <defs>
+                                      <linearGradient id="dashboardVelocityGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
+                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                      </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                      dataKey="date"
+                                      angle={-25}
+                                      textAnchor="end"
+                                      tick={{ fontSize: 11, fill: '#64748b' }}
+                                      interval={Math.ceil(trends.length / 5)}
+                                    />
+                                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <Tooltip
+                                      contentStyle={{
+                                        backgroundColor: '#0f172a',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        color: '#fff',
+                                        fontSize: '11px',
+                                      }}
+                                      formatter={(val: number) => [`$${val.toFixed(2)}`, 'Cumulative']}
+                                    />
+                                    <Area
+                                      type="monotone"
+                                      dataKey="cumulative"
+                                      stroke="#4f46e5"
+                                      strokeWidth={2}
+                                      fillOpacity={1}
+                                      fill="url(#dashboardVelocityGrad)"
+                                    />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              </div>
+                            ) : (
+                              <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                                No trend data yet. Load sample statements to see spending velocity.
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                            <span>Tracked across {trends.length} chronological data points</span>
+                            <span className="font-mono font-semibold text-slate-900">
+                              Peak Cumulative: ${trends.length > 0 ? trends[trends.length - 1].cumulative.toFixed(2) : '0.00'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW 2: Daily Spending Journal */}
               {dashboardView === 'journal' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  {/* Journal Top Header */}
+                  {/* Journal Top Header (No duplicate Add Expense button) */}
                   <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-4xl mx-auto">
                       <div className="flex items-center gap-3">
@@ -838,13 +926,6 @@ export default function App() {
                             {transactions.length} Entries
                           </span>
                         </div>
-                        <button
-                          onClick={() => setIsAddExpenseOpen(true)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition shadow-subtle cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Expense</span>
-                        </button>
                       </div>
                     </div>
                   </header>
@@ -955,10 +1036,9 @@ export default function App() {
                 </div>
               )}
 
-              {/* VIEW B: Recurring Subscriptions & Bills */}
+              {/* VIEW 3: Recurring Subscriptions & Bills */}
               {dashboardView === 'subscriptions' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  {/* Subscriptions Top Header */}
                   <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
                     <div className="max-w-5xl mx-auto">
                       <div className="flex items-center gap-3">
@@ -1008,7 +1088,6 @@ export default function App() {
                     </div>
                   </header>
 
-                  {/* Subscriptions Grid Feed */}
                   <div className="flex-1 overflow-y-auto p-6">
                     {subscriptions.length === 0 ? (
                       <div className="max-w-md mx-auto my-12 text-center p-8 bg-white border border-slate-200 rounded-2xl shadow-card">
@@ -1073,10 +1152,9 @@ export default function App() {
                 </div>
               )}
 
-              {/* VIEW C: Chat Copilot Workspace */}
+              {/* VIEW 4: Chat Copilot Workspace */}
               {dashboardView === 'chat' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  {/* Top Header */}
                   <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
                     <div className="max-w-4xl mx-auto">
                       <div className="flex items-center gap-3">
@@ -1108,7 +1186,6 @@ export default function App() {
                           </button>
                           {previewOpen && (
                             <div className="border-t border-slate-200">
-                              {/* Search and Category Filter Toolbar */}
                               <div className="p-3 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
                                 <div className="relative flex-1 min-w-[200px]">
                                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1129,7 +1206,6 @@ export default function App() {
                                   )}
                                 </div>
 
-                                {/* Category Filter Pills */}
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   {['All', 'Food', 'Transport', 'Entertainment', 'Utilities', 'Shopping', 'Health', 'Other'].map((cat) => (
                                     <button
@@ -1147,7 +1223,6 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* Table */}
                               <div className="max-h-56 overflow-y-auto text-xs">
                                 {filteredTransactions.length === 0 ? (
                                   <div className="p-6 text-center text-slate-400">
@@ -1191,7 +1266,6 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Empty state info banner */}
                       {transactions.length === 0 && (
                         <div className="mt-4 bg-indigo-50 text-indigo-900 border border-indigo-200 p-3.5 rounded-xl text-xs flex items-center gap-2.5 shadow-subtle">
                           <AlertCircle className="w-4 h-4 text-indigo-600 flex-shrink-0" />
@@ -1199,7 +1273,6 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Sample Prompts */}
                       <div className="mt-4 flex flex-wrap gap-2">
                         {SAMPLE_QUESTIONS.map((q) => (
                           <button
@@ -1215,7 +1288,6 @@ export default function App() {
                     </div>
                   </header>
 
-                  {/* Chat Messages Feed */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-5">
                     <div className="max-w-4xl mx-auto space-y-5">
                       {messages.map((msg, index) => (
@@ -1243,7 +1315,7 @@ export default function App() {
                               <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex justify-end">
                                 <button
                                   onClick={handleDownloadHistory}
-                                  className="text-xs font-medium text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition"
+                                  className="text-xs font-medium text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   <span>Download chat log</span>
@@ -1275,7 +1347,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Chat Input */}
                   <div className="p-4 border-t border-slate-200 bg-white shadow-subtle">
                     <form
                       onSubmit={(e) => {
