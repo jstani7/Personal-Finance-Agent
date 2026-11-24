@@ -23,7 +23,6 @@ import {
   BookOpen,
   Check,
   LayoutDashboard,
-  TrendingUp,
 } from 'lucide-react';
 import {
   BarChart,
@@ -88,13 +87,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_BADGES: Record<string, string> = {
-  Food: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Transport: 'bg-amber-50 text-amber-700 border-amber-200',
-  Entertainment: 'bg-purple-50 text-purple-700 border-purple-200',
-  Utilities: 'bg-blue-50 text-blue-700 border-blue-200',
-  Shopping: 'bg-pink-50 text-pink-700 border-pink-200',
-  Health: 'bg-teal-50 text-teal-700 border-teal-200',
-  Other: 'bg-slate-100 text-slate-700 border-slate-200',
+  Food: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60',
+  Transport: 'bg-amber-950/50 text-amber-300 border-amber-800/60',
+  Entertainment: 'bg-purple-950/50 text-purple-300 border-purple-800/60',
+  Utilities: 'bg-blue-950/50 text-blue-300 border-blue-800/60',
+  Shopping: 'bg-pink-950/50 text-pink-300 border-pink-800/60',
+  Health: 'bg-teal-950/50 text-teal-300 border-teal-800/60',
+  Other: 'bg-slate-800 text-slate-300 border-slate-700',
 };
 
 function formatJournalDate(dateStr: string): string {
@@ -432,7 +431,7 @@ export default function App() {
   }, [summary]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="h-screen w-screen overflow-hidden bg-[#090d16] text-slate-100 font-sans antialiased">
       {/* View 1: Minimalist No-Scroll Landing Page */}
       {activeTab === 'landing' ? (
         <div
@@ -445,7 +444,7 @@ export default function App() {
               Manage Finance Like Never Before with Agent
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed mb-8 max-w-xl">
+            <p className="text-base sm:text-lg text-slate-700 font-normal leading-relaxed mb-8 max-w-xl">
               Track daily expenses, identify recurring subscriptions, and get actionable answers to every personal finance question.
             </p>
 
@@ -459,23 +458,23 @@ export default function App() {
           </main>
         </div>
       ) : (
-        /* View 2: Money Management Dashboard & Daily Journal */
+        /* View 2: Money Management Dashboard & Daily Journal (Dark Mode) */
         <div className="flex flex-col h-screen overflow-hidden">
-          {/* Dashboard Header Bar */}
-          <nav className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-subtle">
-            {/* Left: Clicking brand text goes to landing page without any icon or back button */}
+          {/* Dark Dashboard Header Bar */}
+          <nav className="h-14 bg-[#0f172a] border-b border-slate-800 px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-subtle">
+            {/* Left: Clicking brand text goes to landing page */}
             <button
               onClick={() => setActiveTab('landing')}
-              className="font-bold text-sm tracking-tight text-slate-900 hover:text-indigo-600 transition-colors cursor-pointer"
+              className="font-bold text-sm tracking-tight text-white hover:text-indigo-400 transition-colors cursor-pointer"
             >
               Personal Finance Agent
             </button>
 
-            {/* Right: Active status indicator only (no extra Log Expense button) */}
+            {/* Right: Active status indicator */}
             <div className="flex items-center gap-3">
               {summary && summary.rows_imported > 0 && (
-                <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                   <span className="font-mono">{summary.rows_imported} transactions active</span>
                 </div>
               )}
@@ -484,13 +483,13 @@ export default function App() {
 
           {/* Main Dashboard Layout */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar (Cleaned: no total spending or chart clutter!) */}
-            <aside className="w-72 bg-white border-r border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shadow-subtle flex-shrink-0">
+            {/* Sidebar (Dark Mode) */}
+            <aside className="w-72 bg-[#0d1424] border-r border-slate-800 p-5 flex flex-col justify-between overflow-y-auto shadow-subtle flex-shrink-0">
               <div className="space-y-6">
                 {/* The ONLY Log Daily Expense Button */}
                 <button
                   onClick={() => setIsAddExpenseOpen(true)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2.5 px-4 rounded-xl shadow-subtle hover:shadow-card transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-2.5 px-4 rounded-xl shadow-card transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                 >
                   <Plus className="w-4 h-4 text-white" />
                   <span>Log Daily Expense</span>
@@ -506,8 +505,8 @@ export default function App() {
                     onClick={() => setDashboardView('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                       dashboardView === 'dashboard'
-                        ? 'bg-slate-900 text-white shadow-card font-semibold'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-slate-800 text-white shadow-card font-semibold border border-slate-700/70'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                     }`}
                   >
                     <LayoutDashboard className={`w-4 h-4 ${dashboardView === 'dashboard' ? 'text-amber-300' : 'text-slate-400'}`} />
@@ -518,15 +517,15 @@ export default function App() {
                     onClick={() => setDashboardView('journal')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                       dashboardView === 'journal'
-                        ? 'bg-slate-900 text-white shadow-card font-semibold'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-slate-800 text-white shadow-card font-semibold border border-slate-700/70'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                     }`}
                   >
                     <BookOpen className={`w-4 h-4 ${dashboardView === 'journal' ? 'text-amber-300' : 'text-slate-400'}`} />
                     <span>Daily Journal</span>
                     {journalGroups.length > 0 && (
                       <span className={`ml-auto text-xs font-mono font-medium px-2 py-0.5 rounded-full ${
-                        dashboardView === 'journal' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                        dashboardView === 'journal' ? 'bg-slate-900 text-slate-300 border border-slate-700' : 'bg-slate-800 text-slate-400'
                       }`}>
                         {journalGroups.length}d
                       </span>
@@ -537,15 +536,15 @@ export default function App() {
                     onClick={() => setDashboardView('chat')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                       dashboardView === 'chat'
-                        ? 'bg-slate-900 text-white shadow-card font-semibold'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-slate-800 text-white shadow-card font-semibold border border-slate-700/70'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                     }`}
                   >
                     <MessageSquare className={`w-4 h-4 ${dashboardView === 'chat' ? 'text-amber-300' : 'text-slate-400'}`} />
                     <span>Chat Copilot</span>
                     {messages.length > 0 && (
                       <span className={`ml-auto text-xs font-mono font-medium px-2 py-0.5 rounded-full ${
-                        dashboardView === 'chat' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                        dashboardView === 'chat' ? 'bg-slate-900 text-slate-300 border border-slate-700' : 'bg-slate-800 text-slate-400'
                       }`}>
                         {messages.length}
                       </span>
@@ -556,15 +555,15 @@ export default function App() {
                     onClick={() => setDashboardView('subscriptions')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                       dashboardView === 'subscriptions'
-                        ? 'bg-slate-900 text-white shadow-card font-semibold'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-slate-800 text-white shadow-card font-semibold border border-slate-700/70'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                     }`}
                   >
                     <Repeat className={`w-4 h-4 ${dashboardView === 'subscriptions' ? 'text-amber-300' : 'text-slate-400'}`} />
                     <span>Subscriptions</span>
                     {subscriptions.length > 0 && (
                       <span className={`ml-auto text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
-                        dashboardView === 'subscriptions' ? 'bg-indigo-500 text-white' : 'bg-indigo-50 text-indigo-700'
+                        dashboardView === 'subscriptions' ? 'bg-indigo-600 text-white' : 'bg-indigo-950/60 text-indigo-300 border border-indigo-800/50'
                       }`}>
                         {subscriptions.length}
                       </span>
@@ -572,7 +571,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="h-[1px] bg-slate-200" />
+                <div className="h-[1px] bg-slate-800" />
 
                 {/* Data Ingestion Section */}
                 <div className="space-y-3">
@@ -580,7 +579,7 @@ export default function App() {
                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block px-1">
                       Statement Ingestion
                     </span>
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-mono">
+                    <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono border border-slate-700/60">
                       SQLite
                     </span>
                   </div>
@@ -601,14 +600,14 @@ export default function App() {
                     }}
                     className={`border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
                       isDragOver
-                        ? 'border-indigo-500 bg-indigo-50/50'
-                        : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50/80 bg-slate-50/40'
+                        ? 'border-indigo-500 bg-indigo-950/40'
+                        : 'border-slate-700 hover:border-indigo-500 hover:bg-slate-800/40 bg-slate-900/40'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-white shadow-subtle border border-slate-200 flex items-center justify-center mx-auto mb-2 text-indigo-600">
+                    <div className="w-8 h-8 rounded-full bg-slate-800 shadow-subtle border border-slate-700 flex items-center justify-center mx-auto mb-2 text-indigo-400">
                       <Upload className="h-4 w-4" />
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 block">
+                    <span className="text-xs font-semibold text-slate-200 block">
                       {uploadLoading ? 'Processing file...' : 'Import Statement (CSV/PDF)'}
                     </span>
                     <span className="text-xs text-slate-400 block mt-1">Stored private & local</span>
@@ -624,18 +623,18 @@ export default function App() {
                   <button
                     onClick={handleLoadSample}
                     disabled={uploadLoading}
-                    className="w-full bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs py-2.5 px-3 rounded-lg border border-slate-200 shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2.5 px-3 rounded-lg border border-slate-700 shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {uploadLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                     )}
                     <span>Load sample transactions.csv</span>
                   </button>
 
                   {statusMessage && (
-                    <div className="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-lg border border-emerald-200 flex items-start gap-2 shadow-subtle">
+                    <div className="bg-emerald-950/50 text-emerald-300 text-xs p-3 rounded-lg border border-emerald-800/60 flex items-start gap-2 shadow-subtle">
                       <span className="leading-snug">{statusMessage}</span>
                     </div>
                   )}
@@ -643,30 +642,30 @@ export default function App() {
               </div>
 
               {/* Export and Clear Data Footer */}
-              <div className="pt-4 border-t border-slate-200 space-y-2">
+              <div className="pt-4 border-t border-slate-800 space-y-2">
                 {summary && summary.rows_imported > 0 && (
                   <div className="flex gap-2">
                     <a
                       href="/api/export/csv"
                       download="transactions_export.csv"
-                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-200 transition flex items-center justify-center gap-1.5 shadow-subtle"
+                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 shadow-subtle"
                     >
-                      <Download className="w-3.5 h-3.5 text-slate-500" />
+                      <Download className="w-3.5 h-3.5 text-slate-400" />
                       <span>CSV</span>
                     </a>
                     <a
                       href="/api/export/json"
                       download="financial_audit.json"
-                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-200 transition flex items-center justify-center gap-1.5 shadow-subtle"
+                      className="flex-1 bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-medium text-xs py-2 px-2.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 shadow-subtle"
                     >
-                      <Download className="w-3.5 h-3.5 text-slate-500" />
+                      <Download className="w-3.5 h-3.5 text-slate-400" />
                       <span>Audit JSON</span>
                     </a>
                   </div>
                 )}
                 <button
                   onClick={handleClearData}
-                  className="w-full text-rose-600 hover:bg-rose-50 hover:border-rose-200 font-medium text-xs py-2 px-3 rounded-lg border border-transparent transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full text-rose-400 hover:bg-rose-950/40 hover:border-rose-900/50 font-medium text-xs py-2 px-3 rounded-lg border border-transparent transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Clear Stored Data</span>
@@ -675,23 +674,23 @@ export default function App() {
             </aside>
 
             {/* Main Content Area: View Switcher */}
-            <main className="flex-1 flex flex-col h-full bg-slate-50/60 overflow-hidden">
-              {/* VIEW 1: Dedicated Full Dashboard Section (All bars, spending KPIs, velocity charts) */}
+            <main className="flex-1 flex flex-col h-full bg-[#090d16] overflow-hidden">
+              {/* VIEW 1: Dedicated Full Dashboard Section */}
               {dashboardView === 'dashboard' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
+                  <header className="p-6 bg-[#0d1424] border-b border-slate-800 flex-shrink-0 shadow-subtle">
                     <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                        <h1 className="text-xl font-bold tracking-tight text-slate-900">Spending Overview & Analytics</h1>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <h1 className="text-xl font-bold tracking-tight text-white">Spending Overview & Analytics</h1>
+                        <p className="text-xs text-slate-400 mt-0.5">
                           Visual spending velocity, category distribution bars, and cashflow metrics from local SQLite.
                         </p>
                       </div>
 
                       {summary && (
-                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-700">
+                        <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-300 border border-slate-700/60">
                           <span>{summary.date_range}</span>
-                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-500">•</span>
                           <span>{summary.rows_imported} txs</span>
                         </div>
                       )}
@@ -702,46 +701,46 @@ export default function App() {
                     <div className="max-w-6xl mx-auto space-y-6">
                       {/* Top KPI Metrics Row */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-5 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Total Outflow / Spending
                           </span>
-                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-white mt-1 block">
                             ${summary ? summary.total_spending.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">
+                          <span className="text-xs text-slate-500 block mt-1">
                             {summary?.rows_imported || 0} debit transactions
                           </span>
                         </div>
 
-                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-5 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Total Inflow / Income
                           </span>
-                          <span className="text-2xl font-bold font-mono text-emerald-600 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-emerald-400 mt-1 block">
                             ${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">Salary & deposits</span>
+                          <span className="text-xs text-slate-500 block mt-1">Salary & deposits</span>
                         </div>
 
-                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-5 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Average Daily Spending
                           </span>
-                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-white mt-1 block">
                             ${averageDailySpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">Across {journalGroups.length} logged days</span>
+                          <span className="text-xs text-slate-500 block mt-1">Across {journalGroups.length} logged days</span>
                         </div>
 
-                        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-card">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-5 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Top Spending Category
                           </span>
-                          <span className="text-2xl font-bold font-mono text-indigo-700 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-indigo-400 mt-1 block">
                             {topCategory ? topCategory.name : 'None'}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1 font-mono">
+                          <span className="text-xs text-slate-500 block mt-1 font-mono">
                             {topCategory ? `$${topCategory.amount.toFixed(2)} total` : 'No data'}
                           </span>
                         </div>
@@ -750,14 +749,14 @@ export default function App() {
                       {/* Charts Grid: Bar Chart & Spending Velocity Area Chart */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Chart 1: Category Distribution Bar Chart */}
-                        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-card flex flex-col justify-between">
+                        <div className="p-6 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-4">
                               <div>
-                                <h3 className="text-sm font-bold text-slate-900">Category Spending Distribution</h3>
-                                <p className="text-xs text-slate-500">Expenditure broken down across expense types.</p>
+                                <h3 className="text-sm font-bold text-white">Category Spending Distribution</h3>
+                                <p className="text-xs text-slate-400">Expenditure broken down across expense types.</p>
                               </div>
-                              <span className="text-xs font-mono font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                              <span className="text-xs font-mono font-medium text-slate-300 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700/60">
                                 Bar Chart
                               </span>
                             </div>
@@ -770,16 +769,16 @@ export default function App() {
                                       dataKey="name"
                                       angle={-25}
                                       textAnchor="end"
-                                      tick={{ fontSize: 11, fill: '#64748b' }}
+                                      tick={{ fontSize: 11, fill: '#94a3b8' }}
                                       interval={0}
                                     />
-                                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
                                     <Tooltip
                                       contentStyle={{
-                                        backgroundColor: '#0f172a',
+                                        backgroundColor: '#020617',
                                         borderRadius: '8px',
-                                        border: 'none',
-                                        color: '#fff',
+                                        border: '1px solid #334155',
+                                        color: '#f8fafc',
                                         fontSize: '11px',
                                       }}
                                       formatter={(val: number) => [`$${val.toFixed(2)}`, 'Spend']}
@@ -796,7 +795,7 @@ export default function App() {
                                 </ResponsiveContainer>
                               </div>
                             ) : (
-                              <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                              <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                                 No category data yet. Import statements or load sample data.
                               </div>
                             )}
@@ -804,16 +803,16 @@ export default function App() {
 
                           {/* Category breakdown progress bars */}
                           {summary && summary.category_breakdown && (
-                            <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+                            <div className="pt-4 border-t border-slate-800 grid grid-cols-2 gap-3 text-xs">
                               {Object.entries(summary.category_breakdown).slice(0, 6).map(([cat, val]) => {
                                 const pct = summary.total_spending > 0 ? (val / summary.total_spending) * 100 : 0;
                                 return (
                                   <div key={cat} className="space-y-1">
                                     <div className="flex justify-between items-center text-xs">
-                                      <span className="font-medium text-slate-700">{cat}</span>
-                                      <span className="font-mono text-slate-500 font-semibold">${val.toFixed(0)}</span>
+                                      <span className="font-medium text-slate-300">{cat}</span>
+                                      <span className="font-mono text-slate-400 font-semibold">${val.toFixed(0)}</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                       <div
                                         className="h-full rounded-full"
                                         style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: CATEGORY_COLORS[cat] || '#64748b' }}
@@ -827,14 +826,14 @@ export default function App() {
                         </div>
 
                         {/* Chart 2: Cumulative Spending Velocity Area Chart */}
-                        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-card flex flex-col justify-between">
+                        <div className="p-6 bg-[#11192e] rounded-2xl border border-slate-800 shadow-card flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-4">
                               <div>
-                                <h3 className="text-sm font-bold text-slate-900">Cumulative Spending Velocity</h3>
-                                <p className="text-xs text-slate-500">Day-over-day expenditure acceleration and cumulative burn.</p>
+                                <h3 className="text-sm font-bold text-white">Cumulative Spending Velocity</h3>
+                                <p className="text-xs text-slate-400">Day-over-day expenditure acceleration and cumulative burn.</p>
                               </div>
-                              <span className="text-xs font-mono font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                              <span className="text-xs font-mono font-medium text-slate-300 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700/60">
                                 Area Trend
                               </span>
                             </div>
@@ -845,7 +844,7 @@ export default function App() {
                                   <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                                     <defs>
                                       <linearGradient id="dashboardVelocityGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
+                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.45} />
                                         <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                                       </linearGradient>
                                     </defs>
@@ -853,16 +852,16 @@ export default function App() {
                                       dataKey="date"
                                       angle={-25}
                                       textAnchor="end"
-                                      tick={{ fontSize: 11, fill: '#64748b' }}
+                                      tick={{ fontSize: 11, fill: '#94a3b8' }}
                                       interval={Math.ceil(trends.length / 5)}
                                     />
-                                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
                                     <Tooltip
                                       contentStyle={{
-                                        backgroundColor: '#0f172a',
+                                        backgroundColor: '#020617',
                                         borderRadius: '8px',
-                                        border: 'none',
-                                        color: '#fff',
+                                        border: '1px solid #334155',
+                                        color: '#f8fafc',
                                         fontSize: '11px',
                                       }}
                                       formatter={(val: number) => [`$${val.toFixed(2)}`, 'Cumulative']}
@@ -870,7 +869,7 @@ export default function App() {
                                     <Area
                                       type="monotone"
                                       dataKey="cumulative"
-                                      stroke="#4f46e5"
+                                      stroke="#6366f1"
                                       strokeWidth={2}
                                       fillOpacity={1}
                                       fill="url(#dashboardVelocityGrad)"
@@ -879,15 +878,15 @@ export default function App() {
                                 </ResponsiveContainer>
                               </div>
                             ) : (
-                              <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                              <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                                 No trend data yet. Load sample statements to see spending velocity.
                               </div>
                             )}
                           </div>
 
-                          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                            <span>Tracked across {trends.length} chronological data points</span>
-                            <span className="font-mono font-semibold text-slate-900">
+                          <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                            <span>Tracked across {trends.length} chronological points</span>
+                            <span className="font-mono font-semibold text-slate-200">
                               Peak Cumulative: ${trends.length > 0 ? trends[trends.length - 1].cumulative.toFixed(2) : '0.00'}
                             </span>
                           </div>
@@ -901,28 +900,27 @@ export default function App() {
               {/* VIEW 2: Daily Spending Journal */}
               {dashboardView === 'journal' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  {/* Journal Top Header (No duplicate Add Expense button) */}
-                  <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
+                  <header className="p-6 bg-[#0d1424] border-b border-slate-800 flex-shrink-0 shadow-subtle">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-4xl mx-auto">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-subtle">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-subtle border border-slate-700">
                           <BookOpen className="w-5 h-5 text-amber-300" />
                         </div>
                         <div>
-                          <h1 className="text-xl font-bold tracking-tight text-slate-900">Daily Expense Journal</h1>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <h1 className="text-xl font-bold tracking-tight text-white">Daily Expense Journal</h1>
+                          <p className="text-xs text-slate-400 mt-0.5">
                             Day-by-day record of personal expenditures. Log daily spend or track imported statement timeline.
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700">
-                          <span className="font-mono font-bold text-slate-900">
+                        <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 border border-slate-700/60">
+                          <span className="font-mono font-bold text-white">
                             {journalGroups.length} Days
                           </span>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-600 font-mono">
+                          <span className="text-slate-500">•</span>
+                          <span className="text-slate-400 font-mono">
                             {transactions.length} Entries
                           </span>
                         </div>
@@ -930,30 +928,29 @@ export default function App() {
                     </div>
                   </header>
 
-                  {/* Journal Timeline Feed */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {journalGroups.length === 0 ? (
-                      <div className="max-w-md mx-auto my-12 text-center p-8 bg-white border border-slate-200 rounded-2xl shadow-card">
-                        <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                      <div className="max-w-md mx-auto my-12 text-center p-8 bg-[#11192e] border border-slate-800 rounded-2xl shadow-card">
+                        <div className="w-12 h-12 rounded-full bg-indigo-950/60 text-indigo-400 border border-indigo-800/60 flex items-center justify-center mx-auto mb-3">
                           <BookOpen className="w-6 h-6" />
                         </div>
-                        <h3 className="text-sm font-bold text-slate-900 mb-1">Your Journal is Empty</h3>
-                        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                        <h3 className="text-sm font-bold text-white mb-1">Your Journal is Empty</h3>
+                        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                           Start logging your day-to-day purchases like coffee, groceries, or dinner, or import bank transactions to populate your journal.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
                           <button
                             onClick={() => setIsAddExpenseOpen(true)}
-                            className="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5 text-indigo-400" />
+                            <Plus className="w-3.5 h-3.5 text-white" />
                             <span>Log Today's Expense</span>
                           </button>
                           <button
                             onClick={handleLoadSample}
-                            className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium py-2.5 px-4 rounded-xl border border-slate-200 transition shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-medium py-2.5 px-4 rounded-xl border border-slate-700 transition shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                             <span>Load Demo Journal</span>
                           </button>
                         </div>
@@ -963,33 +960,33 @@ export default function App() {
                         {journalGroups.map(([dateStr, { transactions: dayTxs, totalDailySpend }]) => (
                           <div
                             key={dateStr}
-                            className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-200"
+                            className="bg-[#11192e] border border-slate-800 rounded-2xl overflow-hidden shadow-card hover:border-slate-700 transition-all duration-200"
                           >
                             {/* Day Header */}
-                            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div className="px-5 py-3.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-slate-400" />
-                                <span className="font-semibold text-xs text-slate-900">
+                                <span className="font-semibold text-xs text-slate-200">
                                   {formatJournalDate(dateStr)}
                                 </span>
-                                <span className="text-xs text-slate-400 font-mono">
+                                <span className="text-xs text-slate-500 font-mono">
                                   ({dayTxs.length} {dayTxs.length === 1 ? 'item' : 'items'})
                                 </span>
                               </div>
 
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-slate-900 text-white shadow-subtle">
+                                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-200 border border-slate-700/80 shadow-subtle">
                                   ${totalDailySpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} spent
                                 </span>
                               </div>
                             </div>
 
                             {/* Day Transactions List */}
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-slate-800/60">
                               {dayTxs.map((tx, idx) => (
                                 <div
                                   key={idx}
-                                  className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors"
+                                  className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-800/40 transition-colors"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div
@@ -997,13 +994,13 @@ export default function App() {
                                       style={{ backgroundColor: CATEGORY_COLORS[tx.category] || '#64748b' }}
                                     />
                                     <div>
-                                      <p className="text-sm font-medium text-slate-800 leading-snug">
+                                      <p className="text-sm font-medium text-slate-200 leading-snug">
                                         {tx.description}
                                       </p>
                                       <div className="flex items-center gap-2 mt-0.5">
                                         <span
                                           className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                                            CATEGORY_BADGES[tx.category] || 'bg-slate-50 text-slate-700 border-slate-200'
+                                            CATEGORY_BADGES[tx.category] || 'bg-slate-800 text-slate-300 border-slate-700'
                                           }`}
                                         >
                                           {tx.category}
@@ -1015,7 +1012,7 @@ export default function App() {
                                   <div className="text-right">
                                     <span
                                       className={`font-mono font-semibold text-sm ${
-                                        tx.amount < 0 ? 'text-slate-900' : 'text-emerald-600'
+                                        tx.amount < 0 ? 'text-slate-100' : 'text-emerald-400'
                                       }`}
                                     >
                                       {tx.amount < 0 ? '-' : '+'}$
@@ -1039,15 +1036,15 @@ export default function App() {
               {/* VIEW 3: Recurring Subscriptions & Bills */}
               {dashboardView === 'subscriptions' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
+                  <header className="p-6 bg-[#0d1424] border-b border-slate-800 flex-shrink-0 shadow-subtle">
                     <div className="max-w-5xl mx-auto">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-subtle">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-subtle border border-slate-700">
                           <Repeat className="w-5 h-5 text-amber-300" />
                         </div>
                         <div>
-                          <h1 className="text-xl font-bold tracking-tight text-slate-900">Recurring Subscriptions & Bills</h1>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <h1 className="text-xl font-bold tracking-tight text-white">Recurring Subscriptions & Bills</h1>
+                          <p className="text-xs text-slate-400 mt-0.5">
                             Autonomous pattern detection analyzes billing frequencies to highlight regular commitments and monthly burn.
                           </p>
                         </div>
@@ -1055,34 +1052,34 @@ export default function App() {
 
                       {/* Subscription KPI Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-5">
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-subtle">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-4 bg-[#11192e] rounded-xl border border-slate-800 shadow-subtle">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Fixed Monthly Burn
                           </span>
-                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-white mt-1 block">
                             ${totalMonthlySubscriptions.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">Per billing month</span>
+                          <span className="text-xs text-slate-500 block mt-1">Per billing month</span>
                         </div>
 
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-subtle">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-4 bg-[#11192e] rounded-xl border border-slate-800 shadow-subtle">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Projected Annual Cost
                           </span>
-                          <span className="text-2xl font-bold font-mono text-indigo-700 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-indigo-400 mt-1 block">
                             ${(totalMonthlySubscriptions * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">Annual recurring commitments</span>
+                          <span className="text-xs text-slate-500 block mt-1">Annual recurring commitments</span>
                         </div>
 
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-subtle">
-                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+                        <div className="p-4 bg-[#11192e] rounded-xl border border-slate-800 shadow-subtle">
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
                             Detected Services
                           </span>
-                          <span className="text-2xl font-bold font-mono text-slate-900 mt-1 block">
+                          <span className="text-2xl font-bold font-mono text-white mt-1 block">
                             {subscriptions.length} Services
                           </span>
-                          <span className="text-xs text-slate-400 block mt-1">Repeating cadence identified</span>
+                          <span className="text-xs text-slate-500 block mt-1">Repeating cadence identified</span>
                         </div>
                       </div>
                     </div>
@@ -1090,19 +1087,19 @@ export default function App() {
 
                   <div className="flex-1 overflow-y-auto p-6">
                     {subscriptions.length === 0 ? (
-                      <div className="max-w-md mx-auto my-12 text-center p-8 bg-white border border-slate-200 rounded-2xl shadow-card">
-                        <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                      <div className="max-w-md mx-auto my-12 text-center p-8 bg-[#11192e] border border-slate-800 rounded-2xl shadow-card">
+                        <div className="w-12 h-12 rounded-full bg-indigo-950/60 text-indigo-400 border border-indigo-800/60 flex items-center justify-center mx-auto mb-3">
                           <Repeat className="w-6 h-6" />
                         </div>
-                        <h3 className="text-sm font-bold text-slate-900 mb-1">No Subscriptions Detected</h3>
-                        <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+                        <h3 className="text-sm font-bold text-white mb-1">No Subscriptions Detected</h3>
+                        <p className="text-xs text-slate-400 mb-5 leading-relaxed">
                           Subscriptions and repeating bills are automatically recognized when the same merchant and charge appear across 2 or more cycles.
                         </p>
                         <button
                           onClick={handleLoadSample}
-                          className="bg-slate-900 hover:bg-black text-white text-xs font-medium py-2.5 px-4 rounded-xl transition shadow-subtle inline-flex items-center gap-2 cursor-pointer"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 px-4 rounded-xl transition shadow-subtle inline-flex items-center gap-2 cursor-pointer"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          <Sparkles className="w-3.5 h-3.5 text-white" />
                           <span>Load Sample Statements with Subscriptions</span>
                         </button>
                       </div>
@@ -1111,16 +1108,16 @@ export default function App() {
                         {subscriptions.map((sub, idx) => (
                           <div
                             key={idx}
-                            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex flex-col justify-between"
+                            className="bg-[#11192e] border border-slate-800 rounded-2xl p-5 shadow-card hover:border-slate-700 transition-all duration-200 flex flex-col justify-between"
                           >
                             <div>
                               <div className="flex items-start justify-between gap-2 mb-2">
-                                <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                                <h3 className="text-sm font-bold text-white leading-snug">
                                   {sub.merchant}
                                 </h3>
                                 <span
                                   className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${
-                                    CATEGORY_BADGES[sub.category] || 'bg-slate-50 text-slate-700 border-slate-200'
+                                    CATEGORY_BADGES[sub.category] || 'bg-slate-800 text-slate-300 border-slate-700'
                                   }`}
                                 >
                                   {sub.category}
@@ -1129,18 +1126,18 @@ export default function App() {
 
                               <div className="my-3">
                                 <div className="flex items-baseline gap-1">
-                                  <span className="text-2xl font-extrabold font-mono text-slate-900">
+                                  <span className="text-2xl font-extrabold font-mono text-white">
                                     ${sub.amount.toFixed(2)}
                                   </span>
                                   <span className="text-xs text-slate-400 font-medium">/ month</span>
                                 </div>
-                                <span className="text-xs text-slate-500 block mt-1">
+                                <span className="text-xs text-slate-400 block mt-1">
                                   ~ ${(sub.amount * 12).toFixed(2)} / year
                                 </span>
                               </div>
                             </div>
 
-                            <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                            <div className="pt-3.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 font-mono">
                               <span>Billed {sub.occurrences} times</span>
                               <span>Last: {sub.last_date}</span>
                             </div>
@@ -1155,15 +1152,15 @@ export default function App() {
               {/* VIEW 4: Chat Copilot Workspace */}
               {dashboardView === 'chat' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  <header className="p-6 bg-white border-b border-slate-200 flex-shrink-0 shadow-subtle">
+                  <header className="p-6 bg-[#0d1424] border-b border-slate-800 flex-shrink-0 shadow-subtle">
                     <div className="max-w-4xl mx-auto">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-subtle">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-subtle border border-slate-700">
                           <Bot className="w-5 h-5 text-amber-300" />
                         </div>
                         <div>
-                          <h1 className="text-xl font-bold tracking-tight text-slate-900">Financial Intelligence Copilot</h1>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <h1 className="text-xl font-bold tracking-tight text-white">Financial Intelligence Copilot</h1>
+                          <p className="text-xs text-slate-400 mt-0.5">
                             Ask natural language questions about your spending, budget suggestions, and expense patterns.
                           </p>
                         </div>
@@ -1171,22 +1168,22 @@ export default function App() {
 
                       {/* Transaction Preview Accordion */}
                       {transactions.length > 0 && (
-                        <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-subtle">
+                        <div className="mt-4 border border-slate-800 rounded-xl overflow-hidden bg-[#11192e] shadow-subtle">
                           <button
                             onClick={() => setPreviewOpen(!previewOpen)}
-                            className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer"
+                            className="w-full flex items-center justify-between p-3 bg-slate-900/80 hover:bg-slate-800 text-xs font-semibold text-slate-200 transition cursor-pointer"
                           >
                             <span className="flex items-center gap-2">
                               <span>Transaction preview</span>
-                              <span className="bg-indigo-50 text-indigo-700 font-mono text-xs px-2 py-0.5 rounded-full border border-indigo-200">
+                              <span className="bg-indigo-950 text-indigo-300 font-mono text-xs px-2 py-0.5 rounded-full border border-indigo-800/60">
                                 {transactions.length} rows
                               </span>
                             </span>
                             {previewOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                           </button>
                           {previewOpen && (
-                            <div className="border-t border-slate-200">
-                              <div className="p-3 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div className="border-t border-slate-800">
+                              <div className="p-3 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                                 <div className="relative flex-1 min-w-[200px]">
                                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                   <input
@@ -1194,12 +1191,12 @@ export default function App() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search merchant or date (e.g. Starbucks, 2026-01)..."
-                                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-subtle"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-subtle"
                                   />
                                   {searchQuery && (
                                     <button
                                       onClick={() => setSearchQuery('')}
-                                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
                                     >
                                       <X className="w-3 h-3" />
                                     </button>
@@ -1213,8 +1210,8 @@ export default function App() {
                                       onClick={() => setSelectedCategory(cat)}
                                       className={`px-2.5 py-1 rounded-full text-xs font-medium transition cursor-pointer ${
                                         selectedCategory === cat
-                                          ? 'bg-slate-900 text-white font-semibold'
-                                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                          ? 'bg-indigo-600 text-white font-semibold'
+                                          : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'
                                       }`}
                                     >
                                       {cat}
@@ -1225,12 +1222,12 @@ export default function App() {
 
                               <div className="max-h-56 overflow-y-auto text-xs">
                                 {filteredTransactions.length === 0 ? (
-                                  <div className="p-6 text-center text-slate-400">
+                                  <div className="p-6 text-center text-slate-500">
                                     No transactions match the selected filter.
                                   </div>
                                 ) : (
                                   <table className="w-full text-left">
-                                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 uppercase text-xs tracking-wider font-semibold">
+                                    <thead className="bg-slate-900 sticky top-0 border-b border-slate-800 text-slate-400 uppercase text-xs tracking-wider font-semibold">
                                       <tr>
                                         <th className="p-2.5 pl-4">Date</th>
                                         <th className="p-2.5">Description</th>
@@ -1238,21 +1235,21 @@ export default function App() {
                                         <th className="p-2.5 pr-4 text-right">Amount</th>
                                       </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-slate-800">
                                       {filteredTransactions.map((tx, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                          <td className="p-2.5 pl-4 whitespace-nowrap text-slate-500 font-mono text-xs">{tx.date}</td>
-                                          <td className="p-2.5 font-medium text-slate-800">{tx.description}</td>
+                                        <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                                          <td className="p-2.5 pl-4 whitespace-nowrap text-slate-400 font-mono text-xs">{tx.date}</td>
+                                          <td className="p-2.5 font-medium text-slate-200">{tx.description}</td>
                                           <td className="p-2.5">
                                             <span
                                               className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${
-                                                CATEGORY_BADGES[tx.category] || 'bg-slate-50 text-slate-700 border-slate-200'
+                                                CATEGORY_BADGES[tx.category] || 'bg-slate-800 text-slate-300 border-slate-700'
                                               }`}
                                             >
                                               {tx.category}
                                             </span>
                                           </td>
-                                          <td className={`p-2.5 pr-4 text-right font-mono font-semibold ${tx.amount < 0 ? 'text-slate-900' : 'text-emerald-600'}`}>
+                                          <td className={`p-2.5 pr-4 text-right font-mono font-semibold ${tx.amount < 0 ? 'text-slate-100' : 'text-emerald-400'}`}>
                                             ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                           </td>
                                         </tr>
@@ -1267,8 +1264,8 @@ export default function App() {
                       )}
 
                       {transactions.length === 0 && (
-                        <div className="mt-4 bg-indigo-50 text-indigo-900 border border-indigo-200 p-3.5 rounded-xl text-xs flex items-center gap-2.5 shadow-subtle">
-                          <AlertCircle className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                        <div className="mt-4 bg-indigo-950/40 text-indigo-300 border border-indigo-800/60 p-3.5 rounded-xl text-xs flex items-center gap-2.5 shadow-subtle">
+                          <AlertCircle className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                           <span>No transactions loaded yet. Upload a statement in the sidebar or click <strong>Load sample transactions.csv</strong> to test.</span>
                         </div>
                       )}
@@ -1278,10 +1275,10 @@ export default function App() {
                           <button
                             key={q}
                             onClick={() => handleSendMessage(q)}
-                            className="text-xs bg-white hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-slate-700 py-1.5 px-3 rounded-full border border-slate-200 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer group"
+                            className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white hover:border-indigo-500 py-1.5 px-3 rounded-full border border-slate-700 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer group"
                           >
                             <span>{q}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                            <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition-colors" />
                           </button>
                         ))}
                       </div>
@@ -1296,26 +1293,26 @@ export default function App() {
                           className={`flex gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-subtle">
+                            <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center flex-shrink-0 shadow-subtle border border-slate-700">
                               <Bot className="w-4 h-4 text-amber-300" />
                             </div>
                           )}
                           <div
                             className={`max-w-2xl rounded-2xl p-4 text-xs leading-relaxed ${
                               msg.role === 'user'
-                                ? 'bg-slate-900 text-white shadow-card'
-                                : 'bg-white text-slate-800 border border-slate-200 shadow-card'
+                                ? 'bg-indigo-600 text-white shadow-card'
+                                : 'bg-[#11192e] text-slate-200 border border-slate-800 shadow-card'
                             }`}
                           >
-                            <div className={`prose ${msg.role === 'user' ? 'text-white prose-invert' : 'text-slate-800'}`}>
+                            <div className={`prose ${msg.role === 'user' ? 'text-white prose-invert' : 'text-slate-200 prose-invert'}`}>
                               <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
 
                             {msg.role === 'assistant' && index === messages.length - 1 && (
-                              <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex justify-end">
+                              <div className="mt-3.5 pt-2.5 border-t border-slate-800 flex justify-end">
                                 <button
                                   onClick={handleDownloadHistory}
-                                  className="text-xs font-medium text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition cursor-pointer"
+                                  className="text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   <span>Download chat log</span>
@@ -1324,7 +1321,7 @@ export default function App() {
                             )}
                           </div>
                           {msg.role === 'user' && (
-                            <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-800 flex items-center justify-center flex-shrink-0 shadow-subtle">
+                            <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center flex-shrink-0 shadow-subtle">
                               <User className="w-4 h-4" />
                             </div>
                           )}
@@ -1332,13 +1329,13 @@ export default function App() {
                       ))}
 
                       {loading && (
-                        <div className="flex gap-3.5 items-center text-slate-500 text-xs">
-                          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-subtle">
+                        <div className="flex gap-3.5 items-center text-slate-400 text-xs">
+                          <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center flex-shrink-0 shadow-subtle border border-slate-700">
                             <Bot className="w-4 h-4 text-amber-300" />
                           </div>
-                          <div className="flex items-center gap-2.5 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-card">
-                            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                            <span className="font-medium text-slate-600 text-xs">Analyzing financial database...</span>
+                          <div className="flex items-center gap-2.5 bg-[#11192e] p-3.5 rounded-2xl border border-slate-800 shadow-card">
+                            <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                            <span className="font-medium text-slate-300 text-xs">Analyzing financial database...</span>
                           </div>
                         </div>
                       )}
@@ -1347,7 +1344,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-4 border-t border-slate-200 bg-white shadow-subtle">
+                  <div className="p-4 border-t border-slate-800 bg-[#0d1424] shadow-subtle">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -1361,13 +1358,13 @@ export default function App() {
                           value={inputPrompt}
                           onChange={(e) => setInputPrompt(e.target.value)}
                           placeholder="Ask about expenses, categories, or budgeting..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition shadow-subtle"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition shadow-subtle"
                         />
                       </div>
                       <button
                         type="submit"
                         disabled={loading || !inputPrompt.trim()}
-                        className="bg-slate-900 hover:bg-black disabled:opacity-40 text-white px-5 py-3 rounded-xl text-xs font-semibold transition shadow-subtle flex items-center gap-2 cursor-pointer"
+                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-5 py-3 rounded-xl text-xs font-semibold transition shadow-subtle flex items-center gap-2 cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5" />
                         <span>Send</span>
@@ -1379,26 +1376,26 @@ export default function App() {
             </main>
           </div>
 
-          {/* Modal: Log Daily Expense */}
+          {/* Modal: Log Daily Expense (Dark Mode) */}
           {isAddExpenseOpen && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
               <div
-                className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+                className="bg-[#11192e] rounded-2xl border border-slate-700 shadow-2xl max-w-md w-full overflow-hidden text-white animate-in fade-in duration-150"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-subtle">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-950/70 border border-indigo-800/60 text-indigo-400 flex items-center justify-center shadow-subtle">
                       <Plus className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Log Daily Expense</h3>
+                      <h3 className="text-sm font-bold text-white">Log Daily Expense</h3>
                       <p className="text-xs text-slate-400">Record a personal purchase into your journal.</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setIsAddExpenseOpen(false)}
-                    className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                    className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1406,7 +1403,7 @@ export default function App() {
 
                 <form onSubmit={handleCreateExpense} className="p-6 space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                       Date
                     </label>
                     <input
@@ -1414,12 +1411,12 @@ export default function App() {
                       required
                       value={newDate}
                       onChange={(e) => setNewDate(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono shadow-subtle"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 font-mono shadow-subtle"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                       Description / Merchant
                     </label>
                     <input
@@ -1428,13 +1425,13 @@ export default function App() {
                       placeholder="e.g. Philz Coffee, Groceries at Trader Joe's"
                       value={newDesc}
                       onChange={(e) => setNewDesc(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-subtle"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-subtle"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                         Amount ($)
                       </label>
                       <input
@@ -1445,18 +1442,18 @@ export default function App() {
                         placeholder="0.00"
                         value={newAmount}
                         onChange={(e) => setNewAmount(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-subtle"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-subtle"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                         Category
                       </label>
                       <select
                         value={newCategory}
                         onChange={(e) => setNewCategory(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-subtle cursor-pointer"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-subtle cursor-pointer"
                       >
                         <option value="">Auto-Detect</option>
                         <option value="Food">Food</option>
@@ -1470,18 +1467,18 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                  <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-800">
                     <button
                       type="button"
                       onClick={() => setIsAddExpenseOpen(false)}
-                      className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={addLoading || !newDesc.trim() || !newAmount}
-                      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-subtle transition flex items-center gap-1.5 cursor-pointer"
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-subtle transition flex items-center gap-1.5 cursor-pointer"
                     >
                       {addLoading ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
