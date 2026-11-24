@@ -265,45 +265,34 @@ export default function App() {
       {/* View 1: Minimalist No-Scroll Landing Page */}
       {activeTab === 'landing' ? (
         <div
-          className="h-screen w-screen overflow-hidden flex flex-col justify-between relative bg-cover bg-center bg-no-repeat"
+          className="h-screen w-screen overflow-hidden flex flex-col justify-start relative bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
         >
-          {/* Soft overlay ensuring high-contrast readability for centered content */}
-          <div className="absolute inset-0 bg-[#fdfbf7]/70 backdrop-blur-[1px] pointer-events-none" />
+          {/* Subtle top light gradient for crisp typography contrast without blurring background */}
+          <div className="absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-[#fdfbf7]/80 via-[#fdfbf7]/40 to-transparent pointer-events-none" />
 
-          {/* Top minimal centered logo */}
-          <header className="relative z-10 px-8 pt-10 flex items-center justify-center">
-            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/60 shadow-2xs">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs">
-                <Wallet className="w-4 h-4 text-amber-300" />
-              </div>
-              <span className="font-extrabold text-sm tracking-tight text-slate-900">
-                Personal Finance Agent
-              </span>
-            </div>
-          </header>
-
-          {/* Center Hero Content (fully centered, no tech stack, single CTA) */}
-          <main className="relative z-10 px-6 max-w-3xl mx-auto flex flex-col items-center justify-center text-center my-auto">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.14] mb-6">
-              Manage Finance Like Never Before with Agent
+          {/* Top Hero Content (positioned near top, centered, crisp typography) */}
+          <main className="relative z-10 px-6 max-w-4xl mx-auto flex flex-col items-center text-center pt-14 sm:pt-18">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12] mb-4">
+              Manage Finance{' '}
+              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-amber-600 bg-clip-text text-transparent">
+                Like Never Before
+              </span>{' '}
+              with Agent
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed mb-8 max-w-xl">
-              Upload your bank statements, track spending habits, and get clear answers to every financial question.
+            <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed mb-7 max-w-2xl">
+              Turn raw bank statements into clear answers, intelligent spending breakdowns, and effortless financial control.
             </p>
 
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-base px-8 py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2.5 group cursor-pointer"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.99] transition-all flex items-center gap-2.5 group cursor-pointer border border-slate-700/40"
             >
               <span>Get Started</span>
-              <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-1" />
             </button>
           </main>
-
-          {/* Empty bottom spacer to maintain perfect vertical centering */}
-          <div className="h-16 relative z-10 pointer-events-none" />
         </div>
       ) : (
         /* View 2: Copilot Dashboard */
