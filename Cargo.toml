@@ -3,6 +3,14 @@ name = "personal-finance-agent"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "personal_finance_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "personal-finance-agent"
+path = "src/main.rs"
+
 [dependencies]
 axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }

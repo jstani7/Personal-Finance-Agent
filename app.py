@@ -22,7 +22,6 @@ load_dotenv()
 
 st.set_page_config(
     page_title="Personal Finance Agent",
-    page_icon="💰",
     layout="wide",
 )
 

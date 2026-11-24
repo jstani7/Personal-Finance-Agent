@@ -1,14 +1,10 @@
-mod agent;
-mod categories;
-mod db;
-mod ingest;
-mod models;
+use personal_finance_agent::{agent, db, ingest, models};
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Query, State},
     http::{header, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
@@ -18,9 +14,16 @@ use rust_embed::RustEmbed;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::agent::ask_finance_agent;
-use crate::db::{clear_db, get_import_summary, load_transactions, open_db, DB_FILE};
+use crate::db::{
+    clear_db, detect_subscriptions, get_category_budgets, get_import_summary,
+    get_spending_trends, insert_single_transaction, load_transactions, open_db,
+    set_category_budget, DB_FILE,
+};
 use crate::ingest::{ingest_csv_data, ingest_csv_file, parse_pdf_data};
-use crate::models::{ChatRequest, ChatResponse, ImportSummary, Transaction};
+use crate::models::{
+    CategoryBudget, ChatRequest, ChatResponse, CreateTransactionRequest, DateFilterQuery,
+    ImportSummary, SetBudgetRequest, SpendingTrendPoint, SubscriptionItem, Transaction,
+};
 
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
@@ -52,11 +55,16 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/api/health", get(health_handler))
-        .route("/api/transactions", get(transactions_handler))
+        .route("/api/transactions", get(transactions_handler).post(create_transaction_handler))
+        .route("/api/subscriptions", get(subscriptions_handler))
         .route("/api/summary", get(summary_handler))
+        .route("/api/trends", get(trends_handler))
+        .route("/api/budgets", get(budgets_handler).post(set_budget_handler))
         .route("/api/sample", post(sample_handler))
         .route("/api/upload", post(upload_handler))
         .route("/api/clear", post(clear_handler))
+        .route("/api/export/csv", get(export_csv_handler))
+        .route("/api/export/json", get(export_json_handler))
         .route("/api/chat", post(chat_handler))
         .fallback(static_handler)
         .layer(cors)
@@ -80,24 +88,94 @@ async fn health_handler() -> &'static str {
     "OK"
 }
 
-async fn transactions_handler(State(state): State<Arc<AppState>>) -> Result<Json<Vec<Transaction>>, (StatusCode, String)> {
+async fn transactions_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Json<Vec<Transaction>>, (StatusCode, String)> {
     let conn = open_db(&state.db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let txs = load_transactions(&conn)
+    let txs = load_transactions(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(txs))
 }
 
-async fn summary_handler(State(state): State<Arc<AppState>>) -> Result<Json<ImportSummary>, (StatusCode, String)> {
+async fn create_transaction_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateTransactionRequest>,
+) -> Result<Json<Transaction>, (StatusCode, String)> {
     let conn = open_db(&state.db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let summary = get_import_summary(&conn)
+    let tx = insert_single_transaction(&conn, &payload)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(tx))
+}
+
+async fn subscriptions_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<SubscriptionItem>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let subs = detect_subscriptions(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(subs))
+}
+
+async fn summary_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Json<ImportSummary>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let summary = get_import_summary(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(summary))
+}
+
+async fn trends_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Json<Vec<SpendingTrendPoint>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let trends = get_spending_trends(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(trends))
+}
+
+async fn budgets_handler(
+    State(state): State<Arc<AppState>>,
+    Query(filter): Query<DateFilterQuery>,
+) -> Result<Json<Vec<CategoryBudget>>, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let budgets = get_category_budgets(&conn, filter.start_date.as_deref(), filter.end_date.as_deref())
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(budgets))
+}
+
+async fn set_budget_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SetBudgetRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    set_category_budget(&conn, &payload.category, payload.monthly_limit)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::OK)
 }
 
 async fn sample_handler(State(state): State<Arc<AppState>>) -> Result<Json<ImportSummary>, (StatusCode, String)> {
@@ -150,10 +228,54 @@ async fn clear_handler(State(state): State<Arc<AppState>>) -> Result<Json<Import
     clear_db(&conn)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let summary = get_import_summary(&conn)
+    let summary = get_import_summary(&conn, None, None)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(summary))
+}
+
+async fn export_csv_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let txs = load_transactions(&conn, None, None)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut csv_out = String::from("date,description,amount,category,is_income\n");
+    for t in txs {
+        csv_out.push_str(&format!("{},\"{}\",{:.2},{},{}\n", t.date, t.description.replace('"', "\"\""), t.amount, t.category, t.is_income));
+    }
+
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"transactions_export.csv\""),
+        ],
+        csv_out,
+    ).into_response())
+}
+
+async fn export_json_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let txs = load_transactions(&conn, None, None)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let summary = get_import_summary(&conn, None, None)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let payload = serde_json::json!({
+        "summary": summary,
+        "transactions": txs
+    });
+
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/json"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"financial_audit.json\""),
+        ],
+        payload.to_string(),
+    ).into_response())
 }
 
 async fn chat_handler(

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::path::Path;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use chrono::{Datelike, Local, NaiveDate};
 use rusqlite::Connection;
 use serde_json::{json, Value};
@@ -240,6 +240,45 @@ pub fn find_largest_discretionary_expenses(conn: &Connection, limit: usize) -> R
     Ok(lines.join("\n"))
 }
 
+pub fn check_budget_alerts(conn: &Connection) -> Result<String> {
+    let budgets = crate::db::get_category_budgets(conn, None, None)?;
+    if budgets.is_empty() {
+        return Ok("No transactions or category budgets found.".to_string());
+    }
+
+    let mut lines = vec!["Monthly Category Budgets & Risk Analysis:".to_string(), "".to_string()];
+    for b in budgets {
+        if b.status == "exceeded" {
+            lines.push(format!("- **CRITICAL OVERSPEND: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). Exceeded by ${:.2}!", b.category, b.current_spent, b.monthly_limit, b.percentage, b.current_spent - b.monthly_limit));
+        } else if b.status == "warning" {
+            lines.push(format!("- **WARNING / NEAR LIMIT: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). Only ${:.2} left.", b.category, b.current_spent, b.monthly_limit, b.percentage, b.monthly_limit - b.current_spent));
+        } else {
+            lines.push(format!("- **ON TRACK: {}**: Spent ${:.2} of ${:.2} limit ({:.1}%). ${:.2} remaining.", b.category, b.current_spent, b.monthly_limit, b.percentage, b.monthly_limit - b.current_spent));
+        }
+    }
+
+    Ok(lines.join("\n"))
+}
+
+pub fn detect_recurring_subscriptions(conn: &Connection) -> Result<String> {
+    let subs = crate::db::detect_subscriptions(conn)?;
+    if subs.is_empty() {
+        return Ok("No recurring subscriptions or periodic bills detected in the transactions.".to_string());
+    }
+
+    let total_monthly: f64 = subs.iter().map(|s| s.amount).sum();
+    let mut lines = vec![
+        format!("Detected Recurring Subscriptions (Total recurring commitment: ${:.2}/month):", total_monthly),
+        "".to_string(),
+    ];
+
+    for s in subs {
+        lines.push(format!("- **{}** | {} | ${:.2}/mo (billed {} times, latest: {})", s.merchant, s.category, s.amount, s.occurrences, s.last_date));
+    }
+
+    Ok(lines.join("\n"))
+}
+
 pub fn get_tools_definition() -> Value {
     json!([
         {
@@ -323,6 +362,28 @@ pub fn get_tools_definition() -> Value {
                     }
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_budget_alerts",
+                "description": "Analyze category spending distributions to identify budget overruns and categories exceeding safe allocation thresholds.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "detect_recurring_subscriptions",
+                "description": "Scan transactions to identify recurring subscription charges (Netflix, Spotify, utilities, gym memberships, etc.) and calculate total fixed monthly burn.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
         }
     ])
 }
@@ -369,8 +430,61 @@ pub fn execute_tool(db_path: &Path, name: &str, args_json: &str) -> String {
                 Err(e) => format!("Error: {}", e),
             }
         }
+        "check_budget_alerts" => {
+            match check_budget_alerts(&conn) {
+                Ok(res) => res,
+                Err(e) => format!("Error: {}", e),
+            }
+        }
+        "detect_recurring_subscriptions" => {
+            match detect_recurring_subscriptions(&conn) {
+                Ok(res) => res,
+                Err(e) => format!("Error: {}", e),
+            }
+        }
         other => format!("Unknown tool: {}", other),
     }
+}
+
+pub async fn resolve_llm_config() -> Result<(String, String, String)> {
+    if let Ok(key) = std::env::var("ORQ_API_KEY") {
+        if !key.trim().is_empty() && key != "your-orq-api-key-here" {
+            let url = std::env::var("ORQ_BASE_URL")
+                .unwrap_or_else(|_| "https://api.orq.ai/v3/router".to_string());
+            let model = std::env::var("ORQ_MODEL")
+                .unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+            return Ok((key, url, model));
+        }
+    }
+
+    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        if !key.trim().is_empty() && key != "your-api-key-here" {
+            let url = std::env::var("OPENAI_BASE_URL")
+                .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+            let model = std::env::var("OPENAI_MODEL")
+                .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+            return Ok((key, url, model));
+        }
+    }
+
+    // Auto-detect local Ollama for zero-configuration offline use
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(800))
+        .build()?;
+    if let Ok(res) = client.get("http://localhost:11434/api/tags").send().await {
+        if res.status().is_success() {
+            let json: Value = res.json().await.unwrap_or(json!({}));
+            let model = json["models"]
+                .as_array()
+                .and_then(|m| m.first())
+                .and_then(|m| m["name"].as_str())
+                .unwrap_or("llama3")
+                .to_string();
+            return Ok(("ollama".to_string(), "http://localhost:11434/v1".to_string(), model));
+        }
+    }
+
+    bail!("No LLM provider configured. Set ORQ_API_KEY (or OPENAI_API_KEY) in .env, or run Ollama at http://localhost:11434 for offline private use.")
 }
 
 pub async fn ask_finance_agent(
@@ -378,17 +492,7 @@ pub async fn ask_finance_agent(
     question: &str,
     chat_history: &[(String, String)],
 ) -> Result<String> {
-    let api_key = std::env::var("ORQ_API_KEY")
-        .or_else(|_| std::env::var("OPENAI_API_KEY"))
-        .context("Neither ORQ_API_KEY nor OPENAI_API_KEY is set. Set it in .env.")?;
-
-    let base_url = std::env::var("ORQ_BASE_URL")
-        .or_else(|_| std::env::var("OPENAI_BASE_URL"))
-        .unwrap_or_else(|_| "https://api.orq.ai/v3/router".to_string());
-
-    let model = std::env::var("ORQ_MODEL")
-        .or_else(|_| std::env::var("OPENAI_MODEL"))
-        .unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+    let (api_key, base_url, model) = resolve_llm_config().await?;
 
     let today = Local::now().format("%Y-%m-%d").to_string();
     let system_prompt = format!(

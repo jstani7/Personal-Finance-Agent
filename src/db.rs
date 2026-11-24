@@ -3,7 +3,11 @@ use std::path::Path;
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection};
 
-use crate::models::{ImportSummary, Transaction};
+use crate::categories::categorize_transaction;
+use crate::models::{
+    CategoryBudget, CreateTransactionRequest, ImportSummary, SpendingTrendPoint,
+    SubscriptionItem, Transaction,
+};
 
 pub const DB_FILE: &str = "finance.db";
 
@@ -25,6 +29,15 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS budgets (
+            category TEXT PRIMARY KEY,
+            monthly_limit REAL NOT NULL
+        )",
+        [],
+    )?;
+
     Ok(())
 }
 
@@ -60,12 +73,21 @@ pub fn insert_transactions(conn: &mut Connection, txs: &[Transaction], replace: 
     Ok(())
 }
 
-pub fn load_transactions(conn: &Connection) -> Result<Vec<Transaction>> {
+pub fn load_transactions(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> Result<Vec<Transaction>> {
+    let s = start_date.unwrap_or("");
+    let e = end_date.unwrap_or("");
+
     let mut stmt = conn.prepare(
-        "SELECT id, date, description, amount, category, is_income FROM transactions ORDER BY date",
+        "SELECT id, date, description, amount, category, is_income FROM transactions
+         WHERE (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)
+         ORDER BY date DESC",
     )?;
 
-    let rows = stmt.query_map([], |row| {
+    let rows = stmt.query_map(params![s, e], |row| {
         Ok(Transaction {
             id: row.get(0)?,
             date: row.get(1)?,
@@ -83,8 +105,19 @@ pub fn load_transactions(conn: &Connection) -> Result<Vec<Transaction>> {
     Ok(result)
 }
 
-pub fn get_import_summary(conn: &Connection) -> Result<ImportSummary> {
-    let count: usize = conn.query_row("SELECT COUNT(*) FROM transactions", [], |r| r.get(0))?;
+pub fn get_import_summary(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> Result<ImportSummary> {
+    let s = start_date.unwrap_or("");
+    let e = end_date.unwrap_or("");
+
+    let count: usize = conn.query_row(
+        "SELECT COUNT(*) FROM transactions WHERE (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)",
+        params![s, e],
+        |r| r.get(0),
+    )?;
 
     if count == 0 {
         return Ok(ImportSummary {
@@ -96,27 +129,27 @@ pub fn get_import_summary(conn: &Connection) -> Result<ImportSummary> {
     }
 
     let min_date: String = conn.query_row(
-        "SELECT COALESCE(MIN(date), '') FROM transactions",
-        [],
+        "SELECT COALESCE(MIN(date), '') FROM transactions WHERE (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)",
+        params![s, e],
         |r| r.get(0),
     )?;
     let max_date: String = conn.query_row(
-        "SELECT COALESCE(MAX(date), '') FROM transactions",
-        [],
+        "SELECT COALESCE(MAX(date), '') FROM transactions WHERE (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)",
+        params![s, e],
         |r| r.get(0),
     )?;
 
     let total_spending: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(ABS(amount)), 0.0) FROM transactions WHERE amount < 0",
-        [],
+        "SELECT COALESCE(SUM(ABS(amount)), 0.0) FROM transactions WHERE amount < 0 AND (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2)",
+        params![s, e],
         |r| r.get(0),
     )?;
 
     let mut stmt = conn.prepare(
-        "SELECT category, SUM(ABS(amount)) FROM transactions WHERE amount < 0 GROUP BY category ORDER BY SUM(ABS(amount)) DESC",
+        "SELECT category, SUM(ABS(amount)) FROM transactions WHERE amount < 0 AND (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2) GROUP BY category ORDER BY SUM(ABS(amount)) DESC",
     )?;
 
-    let cat_rows = stmt.query_map([], |row| {
+    let cat_rows = stmt.query_map(params![s, e], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
     })?;
 
@@ -155,9 +188,7 @@ pub fn query_transactions_sql(conn: &Connection, sql: &str) -> Result<String> {
     let col_names: Vec<String> = stmt.column_names().into_iter().map(|s| s.to_string()).collect();
 
     let mut rows = stmt.query([])?;
-    let mut lines = Vec::new();
-    lines.push(col_names.join(" | "));
-    lines.push("-".repeat(lines[0].len()));
+    let mut lines = vec![col_names.join(" | ")];
 
     let mut count = 0;
     while let Some(row) = rows.next()? {
@@ -185,4 +216,187 @@ pub fn query_transactions_sql(conn: &Connection, sql: &str) -> Result<String> {
     }
 
     Ok(lines.join("\n"))
+}
+
+pub fn get_spending_trends(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> Result<Vec<SpendingTrendPoint>> {
+    let s = start_date.unwrap_or("");
+    let e = end_date.unwrap_or("");
+
+    let mut stmt = conn.prepare(
+        "SELECT date, SUM(ABS(amount)) FROM transactions WHERE amount < 0 AND (?1 = '' OR date >= ?1) AND (?2 = '' OR date <= ?2) GROUP BY date ORDER BY date",
+    )?;
+
+    let rows = stmt.query_map(params![s, e], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+    })?;
+
+    let mut points = Vec::new();
+    let mut running_total = 0.0;
+    for r in rows {
+        let (date, daily) = r?;
+        running_total += daily;
+        points.push(SpendingTrendPoint {
+            date,
+            daily,
+            cumulative: running_total,
+        });
+    }
+
+    Ok(points)
+}
+
+pub fn insert_single_transaction(conn: &Connection, tx: &CreateTransactionRequest) -> Result<Transaction> {
+    let clean_amount = if tx.amount > 0.0
+        && !tx.description.to_lowercase().contains("salary")
+        && !tx.description.to_lowercase().contains("deposit")
+        && !tx.description.to_lowercase().contains("income")
+    {
+        -tx.amount.abs()
+    } else {
+        tx.amount
+    };
+
+    let is_income = if clean_amount > 0.0 { 1 } else { 0 };
+    let category = if let Some(ref c) = tx.category {
+        if !c.trim().is_empty() {
+            c.trim().to_string()
+        } else {
+            categorize_transaction(&tx.description, clean_amount).to_string()
+        }
+    } else {
+        categorize_transaction(&tx.description, clean_amount).to_string()
+    };
+
+    conn.execute(
+        "INSERT INTO transactions (date, description, amount, category, is_income) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![tx.date, tx.description, clean_amount, category, is_income],
+    )?;
+
+    let id = conn.last_insert_rowid();
+    Ok(Transaction {
+        id: Some(id),
+        date: tx.date.clone(),
+        description: tx.description.clone(),
+        amount: clean_amount,
+        category,
+        is_income,
+    })
+}
+
+pub fn detect_subscriptions(conn: &Connection) -> Result<Vec<SubscriptionItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT description, category, ABS(amount), COUNT(*) as cnt, MAX(date) as last_d
+         FROM transactions
+         WHERE amount < 0
+         GROUP BY description, ROUND(ABS(amount), 1)
+         HAVING cnt >= 2
+         ORDER BY cnt DESC, ABS(amount) DESC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(SubscriptionItem {
+            merchant: row.get(0)?,
+            category: row.get(1)?,
+            amount: row.get(2)?,
+            occurrences: row.get(3)?,
+            last_date: row.get(4)?,
+            frequency: "Monthly / Recurring".to_string(),
+        })
+    })?;
+
+    let mut subs = Vec::new();
+    for r in rows {
+        subs.push(r?);
+    }
+
+    Ok(subs)
+}
+
+pub fn set_category_budget(conn: &Connection, category: &str, limit: f64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO budgets (category, monthly_limit) VALUES (?1, ?2)
+         ON CONFLICT(category) DO UPDATE SET monthly_limit = excluded.monthly_limit",
+        params![category, limit],
+    )?;
+    Ok(())
+}
+
+pub fn get_category_budgets(
+    conn: &Connection,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) -> Result<Vec<CategoryBudget>> {
+    let s = start_date.unwrap_or("");
+    let e = end_date.unwrap_or("");
+
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT category FROM (
+            SELECT category FROM transactions WHERE amount < 0
+            UNION
+            SELECT category FROM budgets
+        ) ORDER BY category",
+    )?;
+
+    let categories: Vec<String> = stmt
+        .query_map([], |r| r.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let mut budgets = Vec::new();
+    for cat in categories {
+        let user_limit: Option<f64> = conn
+            .query_row(
+                "SELECT monthly_limit FROM budgets WHERE category = ?1",
+                params![cat],
+                |r| r.get(0),
+            )
+            .ok();
+
+        let spent: f64 = conn
+            .query_row(
+                "SELECT COALESCE(SUM(ABS(amount)), 0.0) FROM transactions 
+                 WHERE amount < 0 AND category = ?1 AND (?2 = '' OR date >= ?2) AND (?3 = '' OR date <= ?3)",
+                params![cat, s, e],
+                |r| r.get(0),
+            )
+            .unwrap_or(0.0);
+
+        let monthly_limit = user_limit.unwrap_or_else(|| {
+            if spent > 0.0 {
+                ((spent * 1.15) / 50.0).ceil() * 50.0
+            } else {
+                300.0
+            }
+        });
+
+        let percentage = if monthly_limit > 0.0 {
+            (spent / monthly_limit) * 100.0
+        } else {
+            0.0
+        };
+
+        let status = if percentage > 100.0 {
+            "exceeded".to_string()
+        } else if percentage >= 75.0 {
+            "warning".to_string()
+        } else {
+            "ok".to_string()
+        };
+
+        budgets.push(CategoryBudget {
+            category: cat,
+            monthly_limit,
+            current_spent: spent,
+            percentage,
+            status,
+        });
+    }
+
+    budgets.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap_or(std::cmp::Ordering::Equal));
+
+    Ok(budgets)
 }
