@@ -111,9 +111,6 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
-        if (data.rows_imported > 0) {
-          setActiveTab('dashboard');
-        }
       }
     } catch (err) {
       console.error(err);
@@ -280,26 +277,26 @@ export default function App() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/70 text-xs font-medium">
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-medium shadow-2xs">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all ${
               activeTab === 'overview'
-                ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                ? 'bg-white text-indigo-700 shadow-xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Overview
+            Landing Page
           </button>
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
               activeTab === 'dashboard'
-                ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                ? 'bg-white text-indigo-700 shadow-xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>Dashboard</span>
+            <span>App Dashboard</span>
             {transactions.length > 0 && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             )}
