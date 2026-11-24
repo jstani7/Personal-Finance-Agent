@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::path::Path;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use chrono::{Datelike, Local, NaiveDate};
 use rusqlite::Connection;
 use serde_json::{json, Value};
@@ -373,22 +373,53 @@ pub fn execute_tool(db_path: &Path, name: &str, args_json: &str) -> String {
     }
 }
 
+pub async fn resolve_llm_config() -> Result<(String, String, String)> {
+    if let Ok(key) = std::env::var("ORQ_API_KEY") {
+        if !key.trim().is_empty() && key != "your-orq-api-key-here" {
+            let url = std::env::var("ORQ_BASE_URL")
+                .unwrap_or_else(|_| "https://api.orq.ai/v3/router".to_string());
+            let model = std::env::var("ORQ_MODEL")
+                .unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+            return Ok((key, url, model));
+        }
+    }
+
+    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        if !key.trim().is_empty() && key != "your-api-key-here" {
+            let url = std::env::var("OPENAI_BASE_URL")
+                .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+            let model = std::env::var("OPENAI_MODEL")
+                .unwrap_or_else(|_| "gpt-4o-mini".to_string());
+            return Ok((key, url, model));
+        }
+    }
+
+    // Auto-detect local Ollama for zero-configuration offline use
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(800))
+        .build()?;
+    if let Ok(res) = client.get("http://localhost:11434/api/tags").send().await {
+        if res.status().is_success() {
+            let json: Value = res.json().await.unwrap_or(json!({}));
+            let model = json["models"]
+                .as_array()
+                .and_then(|m| m.first())
+                .and_then(|m| m["name"].as_str())
+                .unwrap_or("llama3")
+                .to_string();
+            return Ok(("ollama".to_string(), "http://localhost:11434/v1".to_string(), model));
+        }
+    }
+
+    bail!("No LLM provider configured. Set ORQ_API_KEY (or OPENAI_API_KEY) in .env, or run Ollama at http://localhost:11434 for offline private use.")
+}
+
 pub async fn ask_finance_agent(
     db_path: &Path,
     question: &str,
     chat_history: &[(String, String)],
 ) -> Result<String> {
-    let api_key = std::env::var("ORQ_API_KEY")
-        .or_else(|_| std::env::var("OPENAI_API_KEY"))
-        .context("Neither ORQ_API_KEY nor OPENAI_API_KEY is set. Set it in .env.")?;
-
-    let base_url = std::env::var("ORQ_BASE_URL")
-        .or_else(|_| std::env::var("OPENAI_BASE_URL"))
-        .unwrap_or_else(|_| "https://api.orq.ai/v3/router".to_string());
-
-    let model = std::env::var("ORQ_MODEL")
-        .or_else(|_| std::env::var("OPENAI_MODEL"))
-        .unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+    let (api_key, base_url, model) = resolve_llm_config().await?;
 
     let today = Local::now().format("%Y-%m-%d").to_string();
     let system_prompt = format!(
