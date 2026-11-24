@@ -58,6 +58,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/sample", post(sample_handler))
         .route("/api/upload", post(upload_handler))
         .route("/api/clear", post(clear_handler))
+        .route("/api/export/csv", get(export_csv_handler))
+        .route("/api/export/json", get(export_json_handler))
         .route("/api/chat", post(chat_handler))
         .fallback(static_handler)
         .layer(cors)
@@ -165,6 +167,50 @@ async fn clear_handler(State(state): State<Arc<AppState>>) -> Result<Json<Import
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(summary))
+}
+
+async fn export_csv_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let txs = load_transactions(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut csv_out = String::from("date,description,amount,category,is_income\n");
+    for t in txs {
+        csv_out.push_str(&format!("{},\"{}\",{:.2},{},{}\n", t.date, t.description.replace('"', "\"\""), t.amount, t.category, t.is_income));
+    }
+
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"transactions_export.csv\""),
+        ],
+        csv_out,
+    ).into_response())
+}
+
+async fn export_json_handler(State(state): State<Arc<AppState>>) -> Result<Response, (StatusCode, String)> {
+    let conn = open_db(&state.db_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let txs = load_transactions(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let summary = get_import_summary(&conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let payload = serde_json::json!({
+        "summary": summary,
+        "transactions": txs
+    });
+
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/json"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"financial_audit.json\""),
+        ],
+        payload.to_string(),
+    ).into_response())
 }
 
 async fn chat_handler(

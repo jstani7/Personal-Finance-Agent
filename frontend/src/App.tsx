@@ -600,11 +600,31 @@ export default function App() {
                 )}
               </div>
 
-              {/* Clear Data Button */}
-              <div className="pt-4 border-t border-slate-200">
+              {/* Export and Clear Data */}
+              <div className="pt-4 border-t border-slate-200 space-y-2">
+                {summary && summary.rows_imported > 0 && (
+                  <div className="flex gap-2">
+                    <a
+                      href="/api/export/csv"
+                      download="transactions_export.csv"
+                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-xs py-1.5 px-2 rounded-lg border border-slate-200/80 transition flex items-center justify-center gap-1 shadow-2xs"
+                    >
+                      <Download className="w-3 h-3 text-slate-500" />
+                      <span>Export CSV</span>
+                    </a>
+                    <a
+                      href="/api/export/json"
+                      download="financial_audit.json"
+                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-xs py-1.5 px-2 rounded-lg border border-slate-200/80 transition flex items-center justify-center gap-1 shadow-2xs"
+                    >
+                      <Download className="w-3 h-3 text-slate-500" />
+                      <span>Audit JSON</span>
+                    </a>
+                  </div>
+                )}
                 <button
                   onClick={handleClearData}
-                  className="w-full text-rose-600 hover:bg-rose-50 hover:border-rose-200 font-medium text-xs py-2 px-3 rounded-lg border border-transparent transition flex items-center justify-center gap-1.5"
+                  className="w-full text-rose-600 hover:bg-rose-50 hover:border-rose-200 font-medium text-xs py-2 px-3 rounded-lg border border-transparent transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Clear Data
